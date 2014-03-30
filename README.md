@@ -1,10 +1,9 @@
-PHPUnit tests for Version Control For Text Fields ProcessWire module
-====================================================================
+PHPUnit tests for Version Control ProcessWire module
+====================================================
 
 Intended to be run against a clean installation of ProcessWire with Version
-Control For Text Fields included. Most of the tests included depend on each
-other, which is why they're grouped together into one file and use depends
-annotation.
+Control included. Most of the tests included depend on each other, which is
+why they're grouped together into one file and use depends annotation.
 
 DO NOT run these tests against production site, as they will add, edit and
 remove pages when necessary, thus potentially seriously damaging your site!
@@ -23,4 +22,4 @@ were found below that directory.
 ## See also
 
 * ProcessWire CMS/CMF: https://github.com/ryancramerdesign/ProcessWire
-* Version Control For Text Fields module: https://github.com/teppokoivula/VersionControlForTextFields
+* Version Control module: https://github.com/teppokoivula/VersionControl
