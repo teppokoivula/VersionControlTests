@@ -298,14 +298,31 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         );
         if (in_array($this->getName(), $skip_teardown)) return;
 
-        // Fetch content from version control database tables
+        // Start constructing database query
         $t1 = constant(self::$module_name . "::TABLE_REVISIONS");
         $t2 = constant(self::$module_name . "::TABLE_DATA");
-        $result = wire('db')->query("
-            SELECT pages_id, fields_id, users_id, username, property, data 
-            FROM {$t1} t1
-            JOIN {$t2} t2 ON t2.revisions_id = t1.id
-        ");
+        $t3 = constant(self::$module_name . "::TABLE_FILES");
+        $t4 = constant(self::$module_name . "::TABLE_DATA_FILES");
+        $columns = array(
+            'pages_id',
+            'fields_id',
+            'users_id',
+            'username',
+            'property',
+            'data',
+            'filename',
+            'mime_type',
+            'size',
+        );
+        $joins = array(
+            "JOIN {$t2} t2 ON t2.revisions_id = t1.id",
+            "LEFT OUTER JOIN {$t4} t4 ON t4.data_id = t2.id",
+            "LEFT OUTER JOIN {$t3} t3 ON t3.id = t4.files_id",
+        );
+
+        // Fetch content from version control database tables
+        $sql = "SELECT " . implode(", ", $columns) . " FROM {$t1} t1 " . implode(" ", $joins);
+        $result = wire('db')->query($sql);
 
         // Compare fetched rows to temporary array containing local data rows
         $data = self::$data;
@@ -316,6 +333,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
                 $data_row = array();
                 $message = "Local data row was NULL, using placeholder array";
             }
+            $data_row = array_pad($data_row, count($columns), null);
+            $message = ($message ? $message . "\n" : "") . "Query: {$sql}";
             $this->assertEquals($data_row, $row, $message);
         }
 
@@ -360,6 +379,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
                 76, // body
                 wire('fields')->get('page')->id,
                 wire('fields')->get('checkbox')->id,
+                wire('fields')->get('images')->id,
             ),
         );
         if (method_exists(wire('languages'), "reloadLanguages")) {
@@ -633,6 +653,32 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * Edit image field
+     * 
+     * This should add one row to revisions table, one row to data table and
+     * one row to files table.
+     *
+     * @depends testEditPageField
+     * @param Page $page
+     * @return Page
+     */
+    public function testEditImageField(Page $page) {
+        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
+        $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
+        $filedata = array(
+            'filename' => $filename,
+            'description' => '',
+            'modified' => time(),
+            'created' => time(),
+            'tags' => '',
+        );
+        $page->images = $file;
+        $page->save();
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", json_encode($filedata), $filename, "image/png", "91081");
+        return $page;
+    }
+
+    /**
      * Delete previously added page
      *
      * This operation should clear all previously added rows from version
@@ -640,7 +686,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      *
      * Note: won't pass until ProcessWire issue #368 is resolved.
      *
-     * @depends testEditPageField
+     * @depends testEditImageField
      * @param Page $page
      */
     public function testDeletePage(Page $page) {
