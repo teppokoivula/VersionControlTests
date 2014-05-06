@@ -299,12 +299,12 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         if (in_array($this->getName(), $skip_teardown)) return;
 
         // Fetch content from version control database tables
-        $t1 = constant(self::$module_name . "::TABLE_NAME");
-        $t2 = constant(self::$module_name . "::DATA_TABLE_NAME");
+        $t1 = constant(self::$module_name . "::TABLE_REVISIONS");
+        $t2 = constant(self::$module_name . "::TABLE_DATA");
         $result = wire('db')->query("
             SELECT pages_id, fields_id, users_id, username, property, data 
             FROM {$t1} t1
-            JOIN {$t2} t2 ON t2.{$t1}_id = t1.id 
+            JOIN {$t2} t2 ON t2.revisions_id = t1.id
         ");
 
         // Compare fetched rows to temporary array containing local data rows
