@@ -585,15 +585,42 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * Edit image field
+     * 
+     * This should add one row to revisions table, one row to data table and
+     * one row to files table.
+     * 
+     * @depends testEditRepeaterField
+     * @param Page $page
+     * @return Page
+     */
+    public function testEditImageField(Page $page) {
+        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
+        $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
+        $filedata = array(
+            'filename' => $filename,
+            'description' => '',
+            'modified' => time(),
+            'created' => time(),
+            'tags' => '',
+        );
+        $page->images = $file;
+        $page->save();
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", json_encode($filedata), $filename, "image/png", "91081");
+        return $page;
+    }
+
+    /**
      * Fetch a snapshot for page
      *
      * To test snapshots properly, we need to make sure that there's enough time
      * between previous changes and current state, which is why we'll use sleep
      * function. Back and forth testing is mostly just a precaution.
      *
-     * @depends testEditRepeaterField
+     * @depends testEditImageField
      * @param Page $page
      * @return Page
+     * @todo test for snapshots when files are involved
      */
     public function testSnapshot(Page $page) {
 
@@ -653,32 +680,6 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
-     * Edit image field
-     * 
-     * This should add one row to revisions table, one row to data table and
-     * one row to files table.
-     *
-     * @depends testEditPageField
-     * @param Page $page
-     * @return Page
-     */
-    public function testEditImageField(Page $page) {
-        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
-        $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
-        $filedata = array(
-            'filename' => $filename,
-            'description' => '',
-            'modified' => time(),
-            'created' => time(),
-            'tags' => '',
-        );
-        $page->images = $file;
-        $page->save();
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", json_encode($filedata), $filename, "image/png", "91081");
-        return $page;
-    }
-
-    /**
      * Delete previously added page
      *
      * This operation should clear all previously added rows from version
@@ -686,7 +687,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      *
      * Note: won't pass until ProcessWire issue #368 is resolved.
      *
-     * @depends testEditImageField
+     * @depends testEditPageField
      * @param Page $page
      */
     public function testDeletePage(Page $page) {
