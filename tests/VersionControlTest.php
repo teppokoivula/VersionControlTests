@@ -39,12 +39,13 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         // Set module name
         self::$module_name = substr(__CLASS__, 0, strlen(__CLASS__)-4);
 
-        // Create new page field and add it to basic-page template
-        $field = wire('fields')->get('page');
+        // Create page field and add it to basic-page template
+        $field_name = "page";
+        $field = wire('fields')->get($field_name);
         if (!$field || !$field->id) {
             $field = new Field;
             $field->type = wire('modules')->get('FieldtypePage');
-            $field->name = 'page';
+            $field->name = $field_name;
             $field->parent_id = 1; // home
             $field->inputfield = 'InputfieldAsmSelect';
             $field->save();
@@ -58,11 +59,12 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         }
 
         // Create checkbox field and add it to basic-page template
-        $field = wire('fields')->get('checkbox');
+        $field_name = "checkbox";
+        $field = wire('fields')->get($field_name);
         if (!$field || !$field->id) {
             $field = new Field;
             $field->type = wire('modules')->get('FieldtypeCheckbox');
-            $field->name = 'checkbox';
+            $field->name = $field_name;
             $field->save();
             $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
@@ -73,7 +75,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
         }
 
-        // Create new repeater field and add it to basic-page template
+        // Create repeater field and add it to basic-page template
         $field_name = "repeater";
         $field = wire('fields')->get($field_name);
         if (!$field || !$field->id) {
@@ -94,6 +96,23 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             $field->name = $field_name;
             $field->parent_id = wire('pages')->get("name=for-field-{$field->id}")->id;
             $field->template_id = $template->id;
+            $field->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+        }
+        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        if (!$fieldgroup->hasField($field)) {
+            $fieldgroup->add($field);
+            $fieldgroup->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+        }
+
+        // Create image field and add it to basic-page template
+        $field_name = "image";
+        $field = wire('fields')->get($field_name);
+        if (!$field || !$field->id) {
+            $field = new Field;
+            $field->type = wire('modules')->get('FieldtypeImage');
+            $field->name = $field_name;
             $field->save();
             $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
@@ -228,7 +247,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
 
         // Remove "regular" fields from templates (or fieldgroups) they're added
         // to and then remove the fields themselves
-        $fields = array('page', 'text_language', 'checkbox', 'checkbox_java');
+        $fields = array('page', 'text_language', 'checkbox', 'checkbox_java', 'image');
         foreach ($fields as $field) {
             $field = wire('fields')->get($field);
             if ($field && $field->id) {
@@ -344,6 +363,22 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             $this->fail("Local data has more rows than database:\n\n$data");
         }
 
+        // Check for orphaned or missing rows in files table
+        $error = "";
+        $sql = "
+        SELECT d.id data, f.id files
+        FROM version_control__data_files df
+        LEFT JOIN version_control__data d ON df.data_id = d.id
+        LEFT JOIN version_control__files f ON df.files_id = f.id
+        ";
+        $result = wire('db')->query($sql);
+        while ($row = $result->fetch_assoc()) {
+            $row_export = var_export($row, true);
+            if (is_null($row['data'])) $error .= "Extra row in files table: $row_export\n";
+            if (is_null($row['files'])) $error .= "Missing row from files table: $row_export\n";
+        }
+        if ($error) $this->fail($error);
+
     }
     
     /**
@@ -380,6 +415,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
                 wire('fields')->get('page')->id,
                 wire('fields')->get('checkbox')->id,
                 wire('fields')->get('images')->id,
+                wire('fields')->get('image')->id,
             ),
         );
         if (method_exists(wire('languages'), "reloadLanguages")) {
@@ -585,16 +621,16 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
-     * Edit image field
+     * Edit images field
      * 
-     * This should add one row to revisions table, one row to data table and
-     * one row to files table.
+     * This should add two rows to revisions table, two rows to data table and
+     * two rows to files table.
      * 
      * @depends testEditRepeaterField
      * @param Page $page
      * @return Page
      */
-    public function testEditImageField(Page $page) {
+    public function testEditImagesField(Page $page) {
         $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
         $filedata = array(
@@ -605,8 +641,12 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             'tags' => '',
         );
         $page->images = $file;
+        $page->images = $file;
         $page->save();
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", json_encode($filedata), $filename, "image/png", "91081");
+        $filename = str_replace('.png', '-1.png', $filename);
+        $filedata['filename'] = $filename;
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", json_encode($filedata), $filename, "image/png", "91081");
         return $page;
     }
 
@@ -617,7 +657,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * between previous changes and current state, which is why we'll use sleep
      * function. Back and forth testing is mostly just a precaution.
      *
-     * @depends testEditImageField
+     * @depends testEditImagesField
      * @param Page $page
      * @return Page
      * @todo test for snapshots when files are involved
@@ -680,7 +720,65 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
-     * Delete previously added page
+     * Add new page for additional image field testing
+     *
+     * This should add one row to revisions table and one row to data table.
+     *
+     * @depends testEditImagesField
+     * @returns Page
+     */
+    public function testAddImageTestPage() {
+        $page = new Page;
+        $page->parent = wire('pages')->get('/');
+        $page->template = wire('templates')->get('basic-page');
+        $page->title = "a test page 6";
+        $page->save();
+        self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 6");
+        return $page;
+    }
+
+    /**
+     * Add new page and edit image field on it
+     * 
+     * This should add one row to revisions table and one row to data table. It
+     * should *not* add new row to files table.
+     * 
+     * @depends testAddImageTestPage
+     * @param Page $page
+     * @return Page
+     */
+    public function testEditImageField(Page $page) {
+        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
+        $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
+        $filedata = array(
+            'filename' => $filename,
+            'description' => '',
+            'modified' => time(),
+            'created' => time(),
+        );
+        $page->image = $file;
+        $page->save();
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('image')->id, "40", "guest", "0.data", json_encode($filedata), $filename, "image/png", "91081");
+        return $page;
+    }
+
+    /**
+     * Delete page created earlier for image field testing
+     * 
+     * This should remove the last two rows of data from version control
+     * database tables.
+     * 
+     * @depends testEditImageField
+     * @param Page $page
+     */
+    public function testDeleteImageTestPage(Page $page) {
+        $page->delete();
+        array_pop(self::$data);
+        array_pop(self::$data);
+    }
+
+    /**
+     * Delete previously added main test page
      *
      * This operation should clear all previously added rows from version
      * control database table.
