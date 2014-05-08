@@ -13,6 +13,8 @@
  * @author Teppo Koivula, <teppo@flamingruby.com>
  * @copyright Copyright (c) 2014, Teppo Koivula
  * @license GNU/GPL v2, see LICENSE
+ * 
+ * @todo test case for restoring page to previous revision (including files)
  */
 class VersionControlTest extends PHPUnit_Framework_TestCase {
 
@@ -633,20 +635,19 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     public function testEditImagesField(Page $page) {
         $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
-        $filedata = array(
+        $filedata = json_encode(array(
             'filename' => $filename,
             'description' => '',
             'modified' => time(),
             'created' => time(),
             'tags' => '',
-        );
+        ));
+        $page->_filedata_timestamp = time();
         $page->images = $file;
         $page->images = $file;
         $page->save();
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", json_encode($filedata), $filename, "image/png", "91081");
-        $filename = str_replace('.png', '-1.png', $filename);
-        $filedata['filename'] = $filename;
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", json_encode($filedata), $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", $filedata, $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
         return $page;
     }
 
@@ -660,7 +661,6 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @depends testEditImagesField
      * @param Page $page
      * @return Page
-     * @todo test for snapshots when files are involved
      */
     public function testSnapshot(Page $page) {
 
@@ -673,20 +673,36 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $page->body = "new body text";
         $item = $page->repeater->first();
         $item->title = "new repeater title";
+        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
+        $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
+        $filedata = json_encode(array(
+            'filename' => $filename,
+            'description' => '',
+            'modified' => time(),
+            'created' => time(),
+            'tags' => '',
+        ));
+        $filedata_timestamp = time();
+        $page->images = $file;
         $page->save();
         self::$data[] = array((string) $item->id, "1", "40", "guest", "data", "new repeater title");
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 3");
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "new body text");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", str_replace($filedata_timestamp, $page->_filedata_timestamp, $filedata), $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace(array('.png', $filedata_timestamp), array('-1.png', $page->_filedata_timestamp), $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "2.data", str_replace('.png', '-2.png', $filedata), str_replace('.png', '-2.png', $filename), "image/png", "91081");
 
         $page->snapshot('-2 seconds');
         $this->assertEquals('a test page 2', $page->title);
         $this->assertEquals('body text', $page->body);
         $this->assertEquals('repeater title', $page->repeater->first()->title);
+        $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), $page->images);
 
         $page->snapshot();
         $this->assertEquals('a test page 3', $page->title);
         $this->assertEquals('new body text', $page->body);
         $this->assertEquals('new repeater title', $page->repeater->first()->title);
+        $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename) . "|" . str_replace(".png", "-2.png", $filename), $page->images);
 
         $page->title = "a test page 4";
         $page->repeater->first()->title = "repeater title 2";
@@ -695,6 +711,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('a test page 2', $page->title);
         $this->assertEquals('body text', $page->body);
         $this->assertEquals('repeater title', $page->repeater->first()->title);
+        $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), $page->images);
 
         // Reset page
         $page = wire('pages')->get($page->id);
