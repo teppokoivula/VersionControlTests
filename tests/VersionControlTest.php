@@ -14,7 +14,6 @@
  * @copyright Copyright (c) 2014, Teppo Koivula
  * @license GNU/GPL v2, see LICENSE
  * 
- * @todo test case for restoring page to previous revision (including files)
  */
 class VersionControlTest extends PHPUnit_Framework_TestCase {
 
@@ -347,16 +346,27 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
 
         // Compare fetched rows to temporary array containing local data rows
         $data = self::$data;
-        while ($row = $result->fetch_row()) {
-            $data_row = count($data) ? array_shift($data) : null;
-            $message = null;
+        while ($row = $result->fetch_assoc()) {
+            $data_row = count($data) ? array_combine($columns, array_pad(array_values(array_shift($data)), count($columns), null)) : null;
+            $message = array();
             if (!$data_row) {
                 $data_row = array();
-                $message = "Local data row was NULL, using placeholder array";
+                $message[] = "Local data row was NULL, using placeholder array";
             }
-            $data_row = array_pad($data_row, count($columns), null);
-            $message = ($message ? $message . "\n" : "") . "Query: {$sql}";
-            $this->assertEquals($data_row, $row, $message);
+            foreach ($data_row as $key => $value) if (strpos($value, "{") === 0 && ($json = json_decode($value, true)) !== null) $data_row[$key] = $json;
+            foreach ($row as $key => $value) if (strpos($value, "{") === 0 && ($json = json_decode($value, true)) !== null) $row[$key] = $json;
+            $message[] = "Query: {$sql}";
+            if ($row['filename']) {
+                if (!function_exists("rscandir")) {
+                    function rscandir($path, $files = array()) {
+                        if (strpos(strrev($path), "/") !== 0) $path .= "/";
+                        foreach (scandir($path) as $file) if (strpos($file, ".") !== 0) $files[$file] = is_dir($path.$file) ? rscandir($path.$file) : "file";
+                        return count($files) ? $files : "empty directory";
+                    }
+                }
+                $message[] = "Files in " . wire('modules')->VersionControl->path . ": " . var_export(rscandir(wire('modules')->VersionControl->path), true);
+            }
+            $this->assertEquals($data_row, $row, $message ? implode("\n", $message) . "\n" : null);
         }
 
         // There shouldn't be any data left in aforementioned temporary array
@@ -635,14 +645,14 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     public function testEditImagesField(Page $page) {
         $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
+        $page->_filedata_timestamp = time();
         $filedata = json_encode(array(
             'filename' => $filename,
             'description' => '',
-            'modified' => time(),
-            'created' => time(),
+            'modified' => $page->_filedata_timestamp,
+            'created' => $page->_filedata_timestamp,
             'tags' => '',
         ));
-        $page->_filedata_timestamp = time();
         $page->images = $file;
         $page->images = $file;
         $page->save();
@@ -675,17 +685,17 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $item->title = "new repeater title";
         $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
+        $filedata_timestamp = time();
         $filedata = json_encode(array(
             'filename' => $filename,
             'description' => '',
-            'modified' => time(),
-            'created' => time(),
+            'modified' => $filedata_timestamp,
+            'created' => $filedata_timestamp,
             'tags' => '',
         ));
-        $filedata_timestamp = time();
         $page->images = $file;
         $page->save();
-        self::$data[] = array((string) $item->id, "1", "40", "guest", "data", "new repeater title");
+        self::$data[] = array((string) $page->repeater->first()->id, "1", "40", "guest", "data", "new repeater title");
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 3");
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "new body text");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", str_replace($filedata_timestamp, $page->_filedata_timestamp, $filedata), $filename, "image/png", "91081");
@@ -713,11 +723,44 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), $page->images);
 
-        // Reset page
+        // Reset page (but store filedata timestamp for later use)
+        $filedata_timestamp = $page->_filedata_timestamp; 
+        wire('pages')->uncache($page);
         $page = wire('pages')->get($page->id);
+        $page->_filedata_timestamp = $filedata_timestamp;
 
         return $page;
 
+    }
+
+    /**
+     * Revert (or restore) page to earlier revision
+     * 
+     * @depends testSnapshot
+     * @param Page $page
+     * @return Page
+     */
+    public function testRevertPage(Page $page) {
+        $page->snapshot('-2 seconds');
+        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
+        $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
+        $filedata = json_encode(array(
+            'filename' => $filename,
+            'description' => '',
+            'modified' => $page->_filedata_timestamp,
+            'created' => $page->_filedata_timestamp,
+            'tags' => '',
+        ));
+        $this->assertEquals('a test page 2', $page->title);
+        $this->assertEquals('body text', $page->body);
+        $this->assertEquals('repeater title', $page->repeater->first()->title);
+        $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), (string) $page->images);
+        self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 2");
+        self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "body text");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", $filedata, $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        $page->save();
+        return $page;
     }
 
     /**
@@ -725,7 +768,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      *
      * This should add one row to both version history database tables.
      *
-     * @depends testSnapshot
+     * @depends testRevertPage
      * @param Page $page
      * @return Page
      */
