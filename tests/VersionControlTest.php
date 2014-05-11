@@ -488,6 +488,20 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * Make a change to (and save) a single field
+     * 
+     * @depends testEditPage
+     * @param Page $page
+     * @return Page
+     */
+    public function testEditField(Page $page) {
+        $page->checkbox = 0;
+        $page->save('checkbox');
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox')->id, "40", "guest", "data", "0");
+        return $page; 
+    }
+
+    /**
      * Make changes to language fields
      *
      * Editing value of one multi-language field in two different languages,
@@ -496,7 +510,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      *
      * @todo module should be updated to avoid always storing empty value for
      *       default language. This feature depends on ProcessWire issue #373.
-     * @depends testEditPage
+     * @depends testEditField
      * @param Page $page
      * @return Page
      */
@@ -642,7 +656,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditImagesField(Page $page) {
+    public function testEditFieldtypeImageMulti(Page $page) {
         $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
         $page->_filedata_timestamp = time();
@@ -668,7 +682,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * between previous changes and current state, which is why we'll use sleep
      * function. Back and forth testing is mostly just a precaution.
      *
-     * @depends testEditImagesField
+     * @depends testEditFieldtypeImageMulti
      * @param Page $page
      * @return Page
      */
@@ -772,7 +786,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditPageField(Page $page) {
+    public function testEditFieldtypePage(Page $page) {
         $page->page = wire('pages')->get('/about/');
         $page->save();
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('page')->id, "40", "guest", "data", "1001");
@@ -784,7 +798,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      *
      * This should add one row to revisions table and one row to data table.
      *
-     * @depends testEditImagesField
+     * @depends testEditFieldtypeImageMulti
      * @returns Page
      */
     public function testAddImageTestPage() {
@@ -807,7 +821,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditImageField(Page $page) {
+    public function testEditFieldtypeImage(Page $page) {
         $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
         $filedata = array(
@@ -828,7 +842,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * This should remove the last two rows of data from version control
      * database tables.
      * 
-     * @depends testEditImageField
+     * @depends testEditFieldtypeImage
      * @param Page $page
      */
     public function testDeleteImageTestPage(Page $page) {
@@ -845,7 +859,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      *
      * Note: won't pass until ProcessWire issue #368 is resolved.
      *
-     * @depends testEditPageField
+     * @depends testEditFieldtypePage
      * @param Page $page
      */
     public function testDeletePage(Page $page) {
