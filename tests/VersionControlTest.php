@@ -524,7 +524,6 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $page->text_language->setLanguageValue($perl, 'since 1987');
         $page->checkbox_java = 1;
         $page->save();
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data", "");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data" . $java, "since 1995");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data" . $perl, "since 1987");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox_java')->id, "40", "guest", "data", "1");
@@ -688,6 +687,15 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      */
     public function testSnapshot(Page $page) {
 
+        $java = null;
+        if (method_exists(wire('languages'), 'reloadLanguages')) {
+            $java = wire('languages')->get('java');
+            $default = wire('languages')->get('default');
+            $page->text_language = 'placeholder';
+            $page->save();
+            self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "placeholder");
+        }
+
         // Snapshots are based on time and API operations happen very fast, so
         // we'll generate small gap here by making PHP sleep for a few seconds
         sleep(4);
@@ -708,6 +716,10 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             'tags' => '',
         ));
         $page->images = $file;
+        if ($java) {
+            $page->text_language = "default language value";
+            $page->text_language->setLanguageValue($java, 'since forever');
+        }
         $page->save();
         self::$data[] = array((string) $page->repeater->first()->id, "1", "40", "guest", "data", "new repeater title");
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 3");
@@ -715,18 +727,30 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", str_replace($filedata_timestamp, $page->_filedata_timestamp, $filedata), $filename, "image/png", "91081");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace(array('.png', $filedata_timestamp), array('-1.png', $page->_filedata_timestamp), $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "2.data", str_replace('.png', '-2.png', $filedata), str_replace('.png', '-2.png', $filename), "image/png", "91081");
+        if ($java) {
+            self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "default language value");
+            self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$java}", "since forever");
+        }
 
         $page->snapshot('-2 seconds');
         $this->assertEquals('a test page 2', $page->title);
         $this->assertEquals('body text', $page->body);
         $this->assertEquals('repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), $page->images);
+        if ($java) {
+            $this->assertEquals('placeholder', (string) $page->text_language);
+            $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
+        }
 
         $page->snapshot();
         $this->assertEquals('a test page 3', $page->title);
         $this->assertEquals('new body text', $page->body);
         $this->assertEquals('new repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename) . "|" . str_replace(".png", "-2.png", $filename), $page->images);
+        if ($java) {
+            $this->assertEquals('default language value', (string) $page->text_language); 
+            $this->assertEquals('since forever', $page->text_language->getLanguageValue($java));
+        }
 
         $page->title = "a test page 4";
         $page->repeater->first()->title = "repeater title 2";
@@ -736,6 +760,10 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('body text', $page->body);
         $this->assertEquals('repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), $page->images);
+        if ($java) {
+            // $this->assertEquals('', (string) $page->text_language); 
+            $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
+        }
 
         // Reset page (but store filedata timestamp for later use)
         $filedata_timestamp = $page->_filedata_timestamp; 
