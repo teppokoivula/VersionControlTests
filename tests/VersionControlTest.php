@@ -761,7 +761,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), $page->images);
         if ($java) {
-            // $this->assertEquals('', (string) $page->text_language); 
+            $this->assertEquals('placeholder', (string) $page->text_language); 
             $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
         }
 
