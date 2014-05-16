@@ -700,6 +700,9 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         // we'll generate small gap here by making PHP sleep for a few seconds
         sleep(4);
 
+        // Save current revision number for later use
+        $starting_revision = $page->versionControlRevision;
+
         $page->title = "a test page 3";
         $page->name = $page->title;
         $page->body = "new body text";
@@ -721,6 +724,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             $page->text_language->setLanguageValue($java, 'since forever');
         }
         $page->save();
+        $this->assertEquals($starting_revision+2, $page->versionControlRevision);
         self::$data[] = array((string) $page->repeater->first()->id, "1", "40", "guest", "data", "new repeater title");
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 3");
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "new body text");
@@ -733,6 +737,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         }
 
         $page->snapshot('-2 seconds');
+        $this->assertEquals($starting_revision, $page->versionControlRevision);
         $this->assertEquals('a test page 2', $page->title);
         $this->assertEquals('body text', $page->body);
         $this->assertEquals('repeater title', $page->repeater->first()->title);
@@ -743,6 +748,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         }
 
         $page->snapshot();
+        $this->assertEquals($starting_revision+2, $page->versionControlRevision);
         $this->assertEquals('a test page 3', $page->title);
         $this->assertEquals('new body text', $page->body);
         $this->assertEquals('new repeater title', $page->repeater->first()->title);
@@ -756,6 +762,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $page->repeater->first()->title = "repeater title 2";
 
         $page->snapshot('-2 seconds');
+        $this->assertEquals($starting_revision, $page->versionControlRevision);
         $this->assertEquals('a test page 2', $page->title);
         $this->assertEquals('body text', $page->body);
         $this->assertEquals('repeater title', $page->repeater->first()->title);
@@ -770,6 +777,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         wire('pages')->uncache($page);
         $page = wire('pages')->get($page->id);
         $page->_filedata_timestamp = $filedata_timestamp;
+        $this->assertEquals($starting_revision+2, $page->versionControlRevision);
 
         return $page;
 
