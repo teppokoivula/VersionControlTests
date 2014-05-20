@@ -772,6 +772,17 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
         }
 
+        $page->snapshot(null, $starting_revision+2);
+        $this->assertEquals($starting_revision+2, $page->versionControlRevision);
+        $this->assertEquals('a test page 3', $page->title);
+        $this->assertEquals('new body text', $page->body);
+        $this->assertEquals('new repeater title', $page->repeater->first()->title);
+        $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename) . "|" . str_replace(".png", "-2.png", $filename), $page->images);
+        if ($java) {
+            $this->assertEquals('default language value', (string) $page->text_language); 
+            $this->assertEquals('since forever', $page->text_language->getLanguageValue($java));
+        }
+
         // Reset page (but store filedata timestamp for later use)
         $filedata_timestamp = $page->_filedata_timestamp; 
         wire('pages')->uncache($page);
