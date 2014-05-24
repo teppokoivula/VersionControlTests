@@ -157,6 +157,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         if (!wire('modules')->isInstalled($module_name)) {
             $module = wire('modules')->getInstall($module_name);
             if (wire('modules')->isInstalled($module_name)) {
+                $module->LS_init();
                 $messages[] = "Module '{$module_name}' installed";
             } else {
                 $errors[] = "Unable to install '{$module_name}'";
@@ -626,7 +627,6 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $item = $page->repeater->getNew();
         $item->title = "repeater title";
         $page->save('repeater');
-        // @todo why does this clear language values?
         self::$data[] = array((string) $item->id, "1", "40", "guest", "data", "repeater title");
         return $page;
     }
@@ -799,10 +799,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
         $java = wire('languages')->get('java');
         $default = wire('languages')->get('default');
-        $perl = wire('languages')->get('perl');
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "placeholder");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$java}", "since 1995");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$perl}", "since 1987");
         $page->save();
         return $page;
     }
