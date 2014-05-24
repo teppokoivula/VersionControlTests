@@ -140,66 +140,61 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             }
         }
 
-        // Language tests require "reloadLanguages" method
-        if (method_exists(wire('languages'), 'reloadLanguages')) {
-
-            // Create dummy languages
-            $languages_page = wire('pages')->get(wire('modules')->get('LanguageSupport')->languagesPageID);
-            $language_names = array('java', 'perl');
-            while ($language_name = array_shift($language_names)) {
-                $language = wire('languages')->get($language_name);
-                if (!$language->id) {
-                    $language = wire('languages')->add($language_name);
-                    wire('languages')->reloadLanguages();
-                    $messages[] = get_class($language) . " '" . $language->name . "' added";
-                }
+        // Create dummy languages
+        $languages_page = wire('pages')->get(wire('modules')->get('LanguageSupport')->languagesPageID);
+        $language_names = array('java', 'perl');
+        while ($language_name = array_shift($language_names)) {
+            $language = wire('languages')->get($language_name);
+            if (!$language->id) {
+                $language = wire('languages')->add($language_name);
+                wire('languages')->reloadLanguages();
+                $messages[] = get_class($language) . " '" . $language->name . "' added";
             }
-            
-            // Install LanguageSupportFields (unless already installed)
-            $module_name = 'LanguageSupportFields';
-            if (!wire('modules')->isInstalled($module_name)) {
-                $module = wire('modules')->getInstall($module_name);
-                if (wire('modules')->isInstalled($module_name)) {
-                    $messages[] = "Module '{$module_name}' installed";
-                } else {
-                    $errors[] = "Unable to install '{$module_name}'";
-                }
-            }
-            
-            // Create new multi-language textfield and add it to basic-page template
-            $field = wire('fields')->get('text_language');
-            if (!$field || !$field->id) {
-                $field = new Field;
-                $field->type = wire('modules')->get('FieldtypeTextLanguage');
-                $field->name = 'text_language';
-                $field->save();
-                $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
-            }
-            $fieldgroup = wire('fieldgroups')->get('basic-page');
-            if (!$fieldgroup->hasField($field)) {
-                $fieldgroup->add($field);
-                $fieldgroup->save();
-                $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
-            }
-
-            // Create new language alternate field for checkbox created earlier
-            $field = wire('fields')->get('checkbox_java');
-            if (!$field || !$field->id) {
-                $field = new Field;
-                $field->type = wire('modules')->get('FieldtypeCheckbox');
-                $field->name = 'checkbox_java';
-                $field->save();
-                $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
-            }
-            $fieldgroup = wire('fieldgroups')->get('basic-page');
-            if (!$fieldgroup->hasField($field)) {
-                $fieldgroup->add($field);
-                $fieldgroup->save();
-                $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
-            }
-
         }
             
+        // Install LanguageSupportFields (unless already installed)
+        $module_name = 'LanguageSupportFields';
+        if (!wire('modules')->isInstalled($module_name)) {
+            $module = wire('modules')->getInstall($module_name);
+            if (wire('modules')->isInstalled($module_name)) {
+                $messages[] = "Module '{$module_name}' installed";
+            } else {
+                $errors[] = "Unable to install '{$module_name}'";
+            }
+        }
+        
+        // Create new multi-language textfield and add it to basic-page template
+        $field = wire('fields')->get('text_language');
+        if (!$field || !$field->id) {
+            $field = new Field;
+            $field->type = wire('modules')->get('FieldtypeTextLanguage');
+            $field->name = 'text_language';
+            $field->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+        }
+        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        if (!$fieldgroup->hasField($field)) {
+            $fieldgroup->add($field);
+            $fieldgroup->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+        }
+        
+        // Create new language alternate field for checkbox created earlier
+        $field = wire('fields')->get('checkbox_java');
+        if (!$field || !$field->id) {
+            $field = new Field;
+            $field->type = wire('modules')->get('FieldtypeCheckbox');
+            $field->name = 'checkbox_java';
+            $field->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+        }
+        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        if (!$fieldgroup->hasField($field)) {
+            $fieldgroup->add($field);
+            $fieldgroup->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+        }
+        
         // Messages and errors
         if ($messages) echo "* " . implode($messages, "\n* ") . "\n\n";
         if ($errors) die("* " . implode($errors, "\n* ") . "\n\n");
@@ -274,14 +269,12 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         }
 
         // Remove dummy languages
-        if (method_exists(wire('languages'), 'reloadLanguages')) {
-            $language_names = array('java', 'perl');
-            while ($language_name = array_shift($language_names)) {
-                $language = wire('languages')->get($language_name);
-                if ($language->id) {
-                    $language->delete();
-                    $messages[] = get_class($language) . " '" . $language->name . "' deleted";
-                }
+        $language_names = array('java', 'perl');
+        while ($language_name = array_shift($language_names)) {
+            $language = wire('languages')->get($language_name);
+            if ($language->id) {
+                $language->delete();
+                $messages[] = get_class($language) . " '" . $language->name . "' deleted";
             }
         }
 
@@ -428,15 +421,10 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
                 wire('fields')->get('checkbox')->id,
                 wire('fields')->get('images')->id,
                 wire('fields')->get('image')->id,
-            ),
-        );
-        if (method_exists(wire('languages'), "reloadLanguages")) {
-            array_push(
-                $data['enabled_fields'],
                 wire('fields')->get('checkbox_java')->id,
                 wire('fields')->get('text_language')->id
-            );
-        }
+            ),
+        );
         $defaults = VersionControl::getDefaultData();
         $data = array_merge($defaults, $data);
         wire('modules')->saveModuleConfigData($module_name, $data);
@@ -515,9 +503,6 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testEditMultiLanguageFields(Page $page) {
-        if (!method_exists(wire('languages'), 'reloadLanguages')) {
-            $this->markTestSkipped("wire('languages') doesn't have reloadLanguages method");
-        }
         $java = wire('languages')->get('java');
         $perl = wire('languages')->get('perl');
         $page->text_language->setLanguageValue($java, 'since 1995');
@@ -536,7 +521,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * Since no fields under version control are affected, this shouldn't add
      * any rows to version control database tables.
      *
-     * @depends testEditPage
+     * @depends testEditMultiLanguageFields
      * @param Page $page
      * @return Page
      */
@@ -641,6 +626,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $item = $page->repeater->getNew();
         $item->title = "repeater title";
         $page->save('repeater');
+        // @todo why does this clear language values?
         self::$data[] = array((string) $item->id, "1", "40", "guest", "data", "repeater title");
         return $page;
     }
@@ -648,8 +634,11 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     /**
      * Edit images field
      * 
-     * This should add two rows to revisions table, two rows to data table and
-     * two rows to files table.
+     * This should add three rows to revisions table, three rows to data table
+     * and two rows to files table. A page type field is edited here to make
+     * sure that the method we're using for removing old file data doesn't end
+     * up breaking page type fields saved at the same time (regression testing
+     * since VersionControl issue #1 at GitHub was related to this).
      * 
      * @depends testEditRepeaterField
      * @param Page $page
@@ -668,9 +657,11 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         ));
         $page->images = $file;
         $page->images = $file;
+        $page->page = wire('pages')->get('/search/');
         $page->save();
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", $filedata, $filename, "image/png", "91081");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('page')->id, "40", "guest", "data", "1000");
         return $page;
     }
 
@@ -687,14 +678,11 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      */
     public function testSnapshot(Page $page) {
 
-        $java = null;
-        if (method_exists(wire('languages'), 'reloadLanguages')) {
-            $java = wire('languages')->get('java');
-            $default = wire('languages')->get('default');
-            $page->text_language = 'placeholder';
-            $page->save();
-            self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "placeholder");
-        }
+        $java = wire('languages')->get('java');
+        $default = wire('languages')->get('default');
+        $page->text_language = 'placeholder';
+        $page->save();
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "placeholder");
 
         // Snapshots are based on time and API operations happen very fast, so
         // we'll generate small gap here by making PHP sleep for a few seconds
@@ -719,10 +707,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             'tags' => '',
         ));
         $page->images = $file;
-        if ($java) {
-            $page->text_language = "default language value";
-            $page->text_language->setLanguageValue($java, 'since forever');
-        }
+        $page->text_language = "default language value";
+        $page->text_language->setLanguageValue($java, 'since forever');
         $page->save();
         $this->assertEquals($starting_revision+2, $page->versionControlRevision);
         self::$data[] = array((string) $page->repeater->first()->id, "1", "40", "guest", "data", "new repeater title");
@@ -731,10 +717,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", str_replace($filedata_timestamp, $page->_filedata_timestamp, $filedata), $filename, "image/png", "91081");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace(array('.png', $filedata_timestamp), array('-1.png', $page->_filedata_timestamp), $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "2.data", str_replace('.png', '-2.png', $filedata), str_replace('.png', '-2.png', $filename), "image/png", "91081");
-        if ($java) {
-            self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "default language value");
-            self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$java}", "since forever");
-        }
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "default language value");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$java}", "since forever");
 
         $page->snapshot('-2 seconds');
         $this->assertEquals($starting_revision, $page->versionControlRevision);
@@ -742,10 +726,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('body text', $page->body);
         $this->assertEquals('repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), $page->images);
-        if ($java) {
-            $this->assertEquals('placeholder', (string) $page->text_language);
-            $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
-        }
+        $this->assertEquals('placeholder', (string) $page->text_language);
+        $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
 
         $page->snapshot();
         $this->assertEquals($starting_revision+2, $page->versionControlRevision);
@@ -753,10 +735,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('new body text', $page->body);
         $this->assertEquals('new repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename) . "|" . str_replace(".png", "-2.png", $filename), $page->images);
-        if ($java) {
-            $this->assertEquals('default language value', (string) $page->text_language); 
-            $this->assertEquals('since forever', $page->text_language->getLanguageValue($java));
-        }
+        $this->assertEquals('default language value', (string) $page->text_language); 
+        $this->assertEquals('since forever', $page->text_language->getLanguageValue($java));
 
         $page->title = "a test page 4";
         $page->repeater->first()->title = "repeater title 2";
@@ -767,10 +747,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('body text', $page->body);
         $this->assertEquals('repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), $page->images);
-        if ($java) {
-            $this->assertEquals('placeholder', (string) $page->text_language); 
-            $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
-        }
+        $this->assertEquals('placeholder', (string) $page->text_language); 
+        $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
 
         $page->snapshot(null, $starting_revision+2);
         $this->assertEquals($starting_revision+2, $page->versionControlRevision);
@@ -779,10 +757,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         // note: at the moment repeater is one revision behind page; is this OK?
         $this->assertEquals('repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename) . "|" . str_replace(".png", "-2.png", $filename), $page->images);
-        if ($java) {
-            $this->assertEquals('default language value', (string) $page->text_language); 
-            $this->assertEquals('since forever', $page->text_language->getLanguageValue($java));
-        }
+        $this->assertEquals('default language value', (string) $page->text_language); 
+        $this->assertEquals('since forever', $page->text_language->getLanguageValue($java));
 
         // Reset page (but store filedata timestamp for later use)
         $filedata_timestamp = $page->_filedata_timestamp; 
@@ -821,6 +797,12 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "body text");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", $filedata, $filename, "image/png", "91081");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        $java = wire('languages')->get('java');
+        $default = wire('languages')->get('default');
+        $perl = wire('languages')->get('perl');
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "placeholder");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$java}", "since 1995");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$perl}", "since 1987");
         $page->save();
         return $page;
     }
@@ -837,7 +819,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     public function testEditFieldtypePage(Page $page) {
         $page->page = wire('pages')->get('/about/');
         $page->save();
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('page')->id, "40", "guest", "data", "1001");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('page')->id, "40", "guest", "data", "1000|1001");
         return $page;
     }
 
