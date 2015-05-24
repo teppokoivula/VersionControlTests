@@ -10,10 +10,11 @@
  * DO NOT run these tests against production site, as they will add, edit and
  * remove pages when necessary, thus potentially seriously damaging your site!
  * 
+ * @backupGlobals disabled
+ * @backupStaticAttributes disabled
  * @author Teppo Koivula, <teppo@flamingruby.com>
  * @copyright Copyright (c) 2014, Teppo Koivula
  * @license GNU/GPL v2, see LICENSE
- * 
  */
 class VersionControlTest extends PHPUnit_Framework_TestCase {
 
@@ -114,6 +115,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             $field = new Field;
             $field->type = wire('modules')->get('FieldtypeImage');
             $field->name = $field_name;
+            $field->extensions = 'jpg png';
             $field->save();
             $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
@@ -127,7 +129,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         // Remove any pages created but not removed during previous tests
         foreach (wire('pages')->find("name^=a-test-page, include=all") as $page) {
             $page->delete();
-            $messages[] = get_class($page) . " '{$page->url}' deleted";
+            $messages[] = get_class($page) . " '{$page->url}' (id={$page->id}) deleted";
         }
 
         // Uninstall module (if installed)
@@ -140,60 +142,67 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             }
         }
 
-        // Create dummy languages
-        $languages_page = wire('pages')->get(wire('modules')->get('LanguageSupport')->languagesPageID);
-        $language_names = array('java', 'perl');
-        while ($language_name = array_shift($language_names)) {
-            $language = wire('languages')->get($language_name);
-            if (!$language->id) {
-                $language = wire('languages')->add($language_name);
-                wire('languages')->reloadLanguages();
-                $messages[] = get_class($language) . " '" . $language->name . "' added";
+        // Make sure that LanguageSupport is installed
+        if (wire('modules')->isInstalled('LanguageSupport')) {
+
+            // Create dummy languages
+            $languages_page = wire('pages')->get(wire('modules')->get('LanguageSupport')->languagesPageID);
+            $language_names = array('java', 'perl');
+            while ($language_name = array_shift($language_names)) {
+                $language = wire('languages')->get($language_name);
+                if (!$language->id) {
+                    $language = wire('languages')->add($language_name);
+                    wire('languages')->reloadLanguages();
+                    $messages[] = get_class($language) . " '" . $language->name . "' added";
+                }
             }
-        }
             
-        // Install LanguageSupportFields (unless already installed)
-        $module_name = 'LanguageSupportFields';
-        if (!wire('modules')->isInstalled($module_name)) {
-            $module = wire('modules')->getInstall($module_name);
-            if (wire('modules')->isInstalled($module_name)) {
-                $module->LS_init();
-                $messages[] = "Module '{$module_name}' installed";
-            } else {
-                $errors[] = "Unable to install '{$module_name}'";
+            // Install LanguageSupportFields (unless already installed)
+            $module_name = 'LanguageSupportFields';
+            if (!wire('modules')->isInstalled($module_name)) {
+                $module = wire('modules')->getInstall($module_name);
+                if (wire('modules')->isInstalled($module_name)) {
+                    $module->LS_init();
+                    $messages[] = "Module '{$module_name}' installed";
+                } else {
+                    $errors[] = "Unable to install '{$module_name}'";
+                }
             }
-        }
+            
+            // Create new multi-language textfield and add it to basic-page template
+            $field = wire('fields')->get('text_language');
+            if (!$field || !$field->id) {
+                $field = new Field;
+                $field->type = wire('modules')->get('FieldtypeTextLanguage');
+                $field->name = 'text_language';
+                $field->save();
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+            }
+            $fieldgroup = wire('fieldgroups')->get('basic-page');
+            if (!$fieldgroup->hasField($field)) {
+                $fieldgroup->add($field);
+                $fieldgroup->save();
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+            }
+            
+            // Create new language alternate field for checkbox created earlier
+            $field = wire('fields')->get('checkbox_java');
+            if (!$field || !$field->id) {
+                $field = new Field;
+                $field->type = wire('modules')->get('FieldtypeCheckbox');
+                $field->name = 'checkbox_java';
+                $field->save();
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+            }
+            $fieldgroup = wire('fieldgroups')->get('basic-page');
+            if (!$fieldgroup->hasField($field)) {
+                $fieldgroup->add($field);
+                $fieldgroup->save();
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+            }
         
-        // Create new multi-language textfield and add it to basic-page template
-        $field = wire('fields')->get('text_language');
-        if (!$field || !$field->id) {
-            $field = new Field;
-            $field->type = wire('modules')->get('FieldtypeTextLanguage');
-            $field->name = 'text_language';
-            $field->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
-        }
-        $fieldgroup = wire('fieldgroups')->get('basic-page');
-        if (!$fieldgroup->hasField($field)) {
-            $fieldgroup->add($field);
-            $fieldgroup->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
-        }
-        
-        // Create new language alternate field for checkbox created earlier
-        $field = wire('fields')->get('checkbox_java');
-        if (!$field || !$field->id) {
-            $field = new Field;
-            $field->type = wire('modules')->get('FieldtypeCheckbox');
-            $field->name = 'checkbox_java';
-            $field->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
-        }
-        $fieldgroup = wire('fieldgroups')->get('basic-page');
-        if (!$fieldgroup->hasField($field)) {
-            $fieldgroup->add($field);
-            $fieldgroup->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+        } else {
+            $errors[] = "LanguageSupport not installed, please install manually before any new tests";
         }
         
         // Messages and errors
@@ -221,7 +230,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         // Remove any pages created but not removed during tests
         foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
             $page->delete();
-            $messages[] = get_class($page) . " '{$page->url}' deleted";
+            $messages[] = get_class($page) . " '{$page->url}' (id={$page->id}) deleted";
         }
 
         // Remove repeater field from templates (or fieldgroups) it's added to
@@ -236,7 +245,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             }
             foreach (wire('pages')->find("template=repeater_{$field->name}, include=all") as $page) {
                 $page->delete();
-                $messages[] = get_class($page) . " '{$page->url}' deleted";
+                $messages[] = get_class($page) . " '{$page->url}' (id={$page->id}) deleted";
             }
             wire('fields')->delete($field);
             $messages[] = substr($field->type, 9) . " field '{$field->name}' deleted";
@@ -269,24 +278,30 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             }
         }
 
-        // Remove dummy languages
-        $language_names = array('java', 'perl');
-        while ($language_name = array_shift($language_names)) {
-            $language = wire('languages')->get($language_name);
-            if ($language->id) {
-                $language->delete();
-                $messages[] = get_class($language) . " '" . $language->name . "' deleted";
+        // Make sure that LanguageSupport is installed
+        if (wire('modules')->isInstalled('LanguageSupport')) {
+            
+            // Remove dummy languages
+            $language_names = array('java', 'perl');
+            while ($language_name = array_shift($language_names)) {
+                $language = wire('languages')->get($language_name);
+                if ($language->id) {
+                    $language->delete();
+                    $messages[] = get_class($language) . " '" . $language->name . "' deleted";
+                }
             }
-        }
-
-        // Uninstall LanguageSupportFields
-        if (wire('modules')->isInstalled('LanguageSupportFields')) {
-            wire('modules')->uninstall('LanguageSupportFields');
-            if (!wire('modules')->isInstalled('LanguageSupportFields')) {
-                $messages[] = "Uninstalled language support for fields (LanguageSupportFields)";
-            } else {
-                $errors[] = "Unable to uninstall language support for fields (LanguageSupportFields)";
+            
+            // Uninstall LanguageSupportFields
+            $module_name = "LanguageSupportFields";
+            if (wire('modules')->isInstalled($module_name)) {
+                wire('modules')->uninstall($module_name);
+                if (!wire('modules')->isInstalled($module_name)) {
+                    $messages[] = "Module '{$module_name}' uninstalled";
+                } else {
+                    $errors[] = "Unable to uninstall '{$module_name}'";
+                }
             }
+            
         }
 
         // Messages and errors
@@ -653,7 +668,6 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             'description' => '',
             'modified' => $page->_filedata_timestamp,
             'created' => $page->_filedata_timestamp,
-            'tags' => '',
         ));
         $page->images = $file;
         $page->images = $file;
@@ -704,7 +718,6 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             'description' => '',
             'modified' => $filedata_timestamp,
             'created' => $filedata_timestamp,
-            'tags' => '',
         ));
         $page->images = $file;
         $page->text_language = "default language value";
@@ -787,7 +800,6 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             'description' => '',
             'modified' => $page->_filedata_timestamp,
             'created' => $page->_filedata_timestamp,
-            'tags' => '',
         ));
         $this->assertEquals('a test page 2', $page->title);
         $this->assertEquals('body text', $page->body);
