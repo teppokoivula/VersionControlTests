@@ -132,6 +132,22 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             $messages[] = get_class($page) . " '{$page->url}' (id={$page->id}) deleted";
         }
 
+        // Create new test template (mostly identical to basic-page)
+        if (!wire('fieldgroups')->get('test-template')) {
+            $fieldgroup = new Fieldgroup;
+            $fieldgroup->name = "test-template";
+            foreach (wire('templates')->get('basic-page')->fields as $field) {
+                if ($field->name == 'text_language') continue;
+                $fieldgroup->append($field);
+            }
+            $fieldgroup->save();
+            $template = new Template;
+            $template->name = "test-template";
+            $template->fieldgroup = $fieldgroup;
+            $template->save();
+            $messages[] = "Template '{$template->name}' (id={$template->id}) created";
+        }
+        
         // Uninstall module (if installed)
         if (wire('modules')->isInstalled(self::$module_name)) {
             if (wire('modules')->isUninstallable(self::$module_name)) {
@@ -231,6 +247,18 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
             $page->delete();
             $messages[] = get_class($page) . " '{$page->url}' (id={$page->id}) deleted";
+        }
+
+        // Remove test template
+        $template = wire('templates')->get('test-template');
+        if ($template && $template->id) {
+            wire('templates')->delete($template);
+            $messages[] = "Template '{$template->name}' deleted";
+        }
+        $fieldgroup = wire('fieldgroups')->get('test-template');
+        if ($fieldgroup && $fieldgroup->id) {
+            wire('fieldgroups')->delete($fieldgroup);
+            $messages[] = "Fieldgroup '{$fieldgroup->name}' deleted";
         }
 
         // Remove repeater field from templates (or fieldgroups) it's added to
@@ -344,13 +372,13 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             'size',
         );
         $joins = array(
-            "JOIN {$t2} t2 ON t2.revisions_id = t1.id",
+            "LEFT JOIN {$t2} t2 ON t2.revisions_id = t1.id",
             "LEFT OUTER JOIN {$t4} t4 ON t4.data_id = t2.id",
             "LEFT OUTER JOIN {$t3} t3 ON t3.id = t4.files_id",
         );
 
         // Fetch content from version control database tables
-        $sql = "SELECT " . implode(", ", $columns) . " FROM {$t1} t1 " . implode(" ", $joins);
+        $sql = "SELECT " . implode(", ", $columns) . " FROM {$t1} t1 " . implode(" ", $joins) . " ORDER BY t1.id";
         $result = wire('db')->query($sql);
 
         // Compare fetched rows to temporary array containing local data rows
@@ -429,6 +457,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $data = array(
             'enabled_templates' => array(
                 29, // basic-page
+                wire('templates')->get('test-template')->id,
             ),
             'enabled_fields' => array(
                 1, // title
@@ -892,6 +921,111 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * Remove a field from the fieldgroup used by our main test page
+     *
+     * This should delete all rows related to the removed field.
+     *
+     * @depends testEditFieldtypePage
+     * @param Page $page
+     */
+    public function testRemoveFieldgroupField(Page $page) {
+        $field = wire('fields')->get('checkbox');
+        $f = wire('fields')->get('checkbox_java');
+        $page->template->fieldgroup->remove($field);
+        $page->template->fieldgroup->save();
+        $count = 0;
+        foreach (self::$data as $key => $row) {
+            if ($row[1] == $field->id) {
+                ++$count;
+                if ($count == 2) {
+                    // removing a field from a fieldgroup won't remove the
+                    // revision; since this particular removal would cause
+                    // a gap in our data (revision has no other changes),
+                    // insert a new placeholder row
+                    self::$data[$key] = array((string) $page->id, null, "40", "guest", null, null);
+                } else {
+                    unset(self::$data[$key]);
+                }
+            }
+        }
+        return $page;
+    }
+
+    /**
+     * Remove a field from the fieldgroup used by our main test page after
+     * disabling removed_fieldgroup_fields cleanup method
+     * 
+     * This shouldn't make any chances to our stored database content.
+     *
+     * @depends testRemoveFieldgroupField
+     * @param Page $page
+     */
+    public function testRemoveFieldgroupFieldWithCleanupDisabled(Page $page) {
+        $data = wire('modules')->getModuleConfigData(self::$module_name);
+        $data['cleanup_methods'] = array(
+            'deleted_pages',
+            'deleted_fields',
+            'changed_template',
+        );
+        wire('modules')->saveModuleConfigData(self::$module_name, $data);
+        $module = wire('modules')->get(self::$module_name);
+        $module->cleanup_methods = $data['cleanup_methods'];
+        $field = wire('fields')->get('checkbox_java');
+        $page->template->fieldgroup->remove($field);
+        $page->template->fieldgroup->save();
+        return $page;
+    }
+
+    /**
+     * Delete a field previously (and without cleanup enabled) removed from
+     * the fieldgroup used by our main test page
+     *
+     * This should delete all rows related to the deleted field.
+     *
+     * @depends testRemoveFieldgroupFieldWithCleanupDisabled
+     * @param Page $page
+     */
+    public function testDeleteField(Page $page) {
+        $field = wire('fields')->get('checkbox_java');
+        foreach (self::$data as $key => $row) {
+            if ($row[1] == $field->id) {
+                unset(self::$data[$key]);
+            }
+        }
+        wire('fields')->delete($field);
+        return $page;
+    }
+
+    /**
+     * Change template of our main test page to one without text_language field
+     * 
+     * This should delete all rows related to the field that this new template
+     * doesn't have.
+     * 
+     * @depends testDeleteField
+     * @param Page $page
+     */
+    public function testChangeTemplate(Page $page) {
+        $page->template = wire('templates')->get('test-template');
+        $page->save();
+        $field = wire('fields')->get('text_language');
+        $count = 0;
+        foreach (self::$data as $key => $row) {
+            if ($row[1] == $field->id) {
+                ++$count;
+                if ($count == 2 || $count == 3) {
+                    self::$data[$key] = array((string) $page->id, null, "40", "guest", null, null);
+                } else {
+                    unset(self::$data[$key]);
+                }
+            }
+        }
+        $page->template = wire('templates')->get('basic-page');
+        $page->save();
+        return $page;
+    }
+
+    /**
      * Delete previously added main test page
      *
      * This operation should clear all previously added rows from version
@@ -899,7 +1033,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      *
      * Note: won't pass until ProcessWire issue #368 is resolved.
      *
-     * @depends testEditFieldtypePage
+     * @depends testChangeTemplate
      * @param Page $page
      */
     public function testDeletePage(Page $page) {
