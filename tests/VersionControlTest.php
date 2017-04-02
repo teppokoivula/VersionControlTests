@@ -12,8 +12,8 @@
  * 
  * @backupGlobals disabled
  * @backupStaticAttributes disabled
- * @author Teppo Koivula, <teppo@flamingruby.com>
- * @copyright Copyright (c) 2014, Teppo Koivula
+ * @copyright 2014-2017 Teppo Koivula
+ * @version 1.0.0
  * @license GNU/GPL v2, see LICENSE
  */
 class VersionControlTest extends PHPUnit_Framework_TestCase {
@@ -22,14 +22,16 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * Static properties shared by all tests
      *
      */
+    protected static $wire;
     protected static $data;
     protected static $module_name;
 
     /**
      * Executed once before tests
      *
-     * Set test environment up by removing old data, bootstrapping ProcessWire
-     * and making sure that module undergoing tests is uninstalled.
+     * Set test environment up by removing old data and making sure that the
+     * module being tested is uninstalled. Note: the bootstrap.php file from
+     * the test repository root is responsible for bootstrapping ProcessWire.
      *
      */
     public static function setUpBeforeClass() {
@@ -38,22 +40,26 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $messages = array();
         $errors = array();
 
+        // Set up Wire
+        global $wire;
+        self::$wire = $wire ?: wire();
+        
         // Set module name
         self::$module_name = substr(__CLASS__, 0, strlen(__CLASS__)-4);
 
         // Create page field and add it to basic-page template
         $field_name = "page";
-        $field = wire('fields')->get($field_name);
+        $field = self::$wire->fields->get($field_name);
         if (!$field || !$field->id) {
-            $field = new Field;
-            $field->type = wire('modules')->get('FieldtypePage');
+            $field = self::$wire->fields->makeBlankItem();
+            $field->type = self::$wire->modules->get('FieldtypePage');
             $field->name = $field_name;
             $field->parent_id = 1; // home
             $field->inputfield = 'InputfieldAsmSelect';
             $field->save();
             $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
-        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        $fieldgroup = self::$wire->fieldgroups->get('basic-page');
         if (!$fieldgroup->hasField($field)) {
             $fieldgroup->add($field);
             $fieldgroup->save();
@@ -62,15 +68,15 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
 
         // Create checkbox field and add it to basic-page template
         $field_name = "checkbox";
-        $field = wire('fields')->get($field_name);
+        $field = self::$wire->fields->get($field_name);
         if (!$field || !$field->id) {
-            $field = new Field;
-            $field->type = wire('modules')->get('FieldtypeCheckbox');
+            $field = self::$wire->fields->makeBlankItem();
+            $field->type = self::$wire->modules->get('FieldtypeCheckbox');
             $field->name = $field_name;
             $field->save();
             $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
-        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        $fieldgroup = self::$wire->fieldgroups->get('basic-page');
         if (!$fieldgroup->hasField($field)) {
             $fieldgroup->add($field);
             $fieldgroup->save();
@@ -79,29 +85,29 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
 
         // Create repeater field and add it to basic-page template
         $field_name = "repeater";
-        $field = wire('fields')->get($field_name);
+        $field = self::$wire->fields->get($field_name);
         if (!$field || !$field->id) {
-            $fieldgroup = new Fieldgroup;
+            $fieldgroup = self::$wire->fieldgroups->makeBlankItem();
             $fieldgroup->name = "repeater_" . $field_name;
-            $fieldgroup->append(wire('fields')->get('title'));
+            $fieldgroup->append(self::$wire->fields->get('title'));
             $fieldgroup->save();
-            $template = new Template;
+            $template = self::$wire->templates->makeBlankItem();
             $template->name = "repeater_" . $field_name;
             $template->fieldgroup = $fieldgroup;
-            $template->flags = Template::flagSystem;	
+            $template->flags = 8; // Template::flagSystem;	
             $template->noChildren = 1; 
             $template->noParents = 1;
             $template->noGlobal = 1; 
             $template->save();
-            $field = new Field;
-            $field->type = wire('modules')->get('FieldtypeRepeater');
+            $field = self::$wire->fields->makeBlankItem();
+            $field->type = self::$wire->modules->get('FieldtypeRepeater');
             $field->name = $field_name;
-            $field->parent_id = wire('pages')->get("name=for-field-{$field->id}")->id;
+            $field->parent_id = self::$wire->pages->get("name=for-field-{$field->id}")->id;
             $field->template_id = $template->id;
             $field->save();
             $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
-        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        $fieldgroup = self::$wire->fieldgroups->get('basic-page');
         if (!$fieldgroup->hasField($field)) {
             $fieldgroup->add($field);
             $fieldgroup->save();
@@ -110,16 +116,16 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
 
         // Create image field and add it to basic-page template
         $field_name = "image";
-        $field = wire('fields')->get($field_name);
+        $field = self::$wire->fields->get($field_name);
         if (!$field || !$field->id) {
-            $field = new Field;
-            $field->type = wire('modules')->get('FieldtypeImage');
+            $field = self::$wire->fields->makeBlankItem();
+            $field->type = self::$wire->modules->get('FieldtypeImage');
             $field->name = $field_name;
             $field->extensions = 'jpg png';
             $field->save();
             $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
-        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        $fieldgroup = self::$wire->fieldgroups->get('basic-page');
         if (!$fieldgroup->hasField($field)) {
             $fieldgroup->add($field);
             $fieldgroup->save();
@@ -127,21 +133,21 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         }
 
         // Remove any pages created but not removed during previous tests
-        foreach (wire('pages')->find("name^=a-test-page, include=all") as $page) {
+        foreach (self::$wire->pages->find("name^=a-test-page, include=all") as $page) {
             $page->delete();
             $messages[] = get_class($page) . " '{$page->url}' (id={$page->id}) deleted";
         }
 
         // Create new test template (mostly identical to basic-page)
-        if (!wire('fieldgroups')->get('test-template')) {
-            $fieldgroup = new Fieldgroup;
+        if (!self::$wire->fieldgroups->get('test-template')) {
+            $fieldgroup = self::$wire->fieldgroups->makeBlankItem();
             $fieldgroup->name = "test-template";
-            foreach (wire('templates')->get('basic-page')->fields as $field) {
+            foreach (self::$wire->templates->get('basic-page')->fields as $field) {
                 if ($field->name == 'text_language') continue;
                 $fieldgroup->append($field);
             }
             $fieldgroup->save();
-            $template = new Template;
+            $template = self::$wire->templates->makeBlankItem();
             $template->name = "test-template";
             $template->fieldgroup = $fieldgroup;
             $template->save();
@@ -149,9 +155,9 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         }
         
         // Uninstall module (if installed)
-        if (wire('modules')->isInstalled(self::$module_name)) {
-            if (wire('modules')->isUninstallable(self::$module_name)) {
-                wire('modules')->uninstall(self::$module_name);
+        if (self::$wire->modules->isInstalled(self::$module_name)) {
+            if (self::$wire->modules->isUninstallable(self::$module_name)) {
+                self::$wire->modules->uninstall(self::$module_name);
                 $messages[] = "Module '" . self::$module_name . "' uninstalled";
             } else {
                 $errors[] = "Module '" . self::$module_name . "' not uninstallable, please uninstall manually before any new tests";
@@ -159,25 +165,25 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         }
 
         // Make sure that LanguageSupport is installed
-        if (wire('modules')->isInstalled('LanguageSupport')) {
+        if (self::$wire->modules->isInstalled('LanguageSupport')) {
 
             // Create dummy languages
-            $languages_page = wire('pages')->get(wire('modules')->get('LanguageSupport')->languagesPageID);
+            $languages_page = self::$wire->pages->get(self::$wire->modules->get('LanguageSupport')->languagesPageID);
             $language_names = array('java', 'perl');
             while ($language_name = array_shift($language_names)) {
-                $language = wire('languages')->get($language_name);
+                $language = self::$wire->languages->get($language_name);
                 if (!$language->id) {
-                    $language = wire('languages')->add($language_name);
-                    wire('languages')->reloadLanguages();
+                    $language = self::$wire->languages->add($language_name);
+                    self::$wire->languages->reloadLanguages();
                     $messages[] = get_class($language) . " '" . $language->name . "' added";
                 }
             }
             
             // Install LanguageSupportFields (unless already installed)
             $module_name = 'LanguageSupportFields';
-            if (!wire('modules')->isInstalled($module_name)) {
-                $module = wire('modules')->getInstall($module_name);
-                if (wire('modules')->isInstalled($module_name)) {
+            if (!self::$wire->modules->isInstalled($module_name)) {
+                $module = self::$wire->modules->getInstall($module_name);
+                if (self::$wire->modules->isInstalled($module_name)) {
                     $module->LS_init();
                     $messages[] = "Module '{$module_name}' installed";
                 } else {
@@ -186,15 +192,15 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             }
             
             // Create new multi-language textfield and add it to basic-page template
-            $field = wire('fields')->get('text_language');
+            $field = self::$wire->fields->get('text_language');
             if (!$field || !$field->id) {
-                $field = new Field;
-                $field->type = wire('modules')->get('FieldtypeTextLanguage');
+                $field = self::$wire->fields->makeBlankItem();
+                $field->type = self::$wire->modules->get('FieldtypeTextLanguage');
                 $field->name = 'text_language';
                 $field->save();
                 $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
             }
-            $fieldgroup = wire('fieldgroups')->get('basic-page');
+            $fieldgroup = self::$wire->fieldgroups->get('basic-page');
             if (!$fieldgroup->hasField($field)) {
                 $fieldgroup->add($field);
                 $fieldgroup->save();
@@ -202,15 +208,15 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             }
             
             // Create new language alternate field for checkbox created earlier
-            $field = wire('fields')->get('checkbox_java');
+            $field = self::$wire->fields->get('checkbox_java');
             if (!$field || !$field->id) {
-                $field = new Field;
-                $field->type = wire('modules')->get('FieldtypeCheckbox');
+                $field = self::$wire->fields->makeBlankItem();
+                $field->type = self::$wire->modules->get('FieldtypeCheckbox');
                 $field->name = 'checkbox_java';
                 $field->save();
                 $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
             }
-            $fieldgroup = wire('fieldgroups')->get('basic-page');
+            $fieldgroup = self::$wire->fieldgroups->get('basic-page');
             if (!$fieldgroup->hasField($field)) {
                 $fieldgroup->add($field);
                 $fieldgroup->save();
@@ -244,26 +250,26 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $errors = array();
 
         // Remove any pages created but not removed during tests
-        foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
+        foreach (self::$wire->pages->find("title^='a test page', include=all") as $page) {
             $page->delete();
             $messages[] = get_class($page) . " '{$page->url}' (id={$page->id}) deleted";
         }
 
         // Remove test template
-        $template = wire('templates')->get('test-template');
+        $template = self::$wire->templates->get('test-template');
         if ($template && $template->id) {
-            wire('templates')->delete($template);
+            self::$wire->templates->delete($template);
             $messages[] = "Template '{$template->name}' deleted";
         }
-        $fieldgroup = wire('fieldgroups')->get('test-template');
+        $fieldgroup = self::$wire->fieldgroups->get('test-template');
         if ($fieldgroup && $fieldgroup->id) {
-            wire('fieldgroups')->delete($fieldgroup);
+            self::$wire->fieldgroups->delete($fieldgroup);
             $messages[] = "Fieldgroup '{$fieldgroup->name}' deleted";
         }
 
         // Remove repeater field from templates (or fieldgroups) it's added to
         // and then remove the field itself
-        $field = wire('fields')->get('repeater');
+        $field = self::$wire->fields->get('repeater');
         if ($field->id) {
             $fieldgroups = $field->getFieldgroups();
             foreach ($fieldgroups as $fieldgroup) {
@@ -271,11 +277,11 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
                 $fieldgroup->save();
                 $messages[] = substr($field->type, 9) . " field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'";
             }
-            foreach (wire('pages')->find("template=repeater_{$field->name}, include=all") as $page) {
+            foreach (self::$wire->pages->find("template=repeater_{$field->name}, include=all") as $page) {
                 $page->delete();
                 $messages[] = get_class($page) . " '{$page->url}' (id={$page->id}) deleted";
             }
-            wire('fields')->delete($field);
+            self::$wire->fields->delete($field);
             $messages[] = substr($field->type, 9) . " field '{$field->name}' deleted";
         }
 
@@ -283,7 +289,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         // to and then remove the fields themselves
         $fields = array('page', 'text_language', 'checkbox', 'checkbox_java', 'image');
         foreach ($fields as $field) {
-            $field = wire('fields')->get($field);
+            $field = self::$wire->fields->get($field);
             if ($field && $field->id) {
                 $fieldgroups = $field->getFieldgroups();
                 foreach ($fieldgroups as $fieldgroup) {
@@ -291,15 +297,15 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
                     $fieldgroup->save();
                     $messages[] = substr($field->type, 9) . " field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'";
                 }
-                wire('fields')->delete($field);
+                self::$wire->fields->delete($field);
                 $messages[] = substr($field->type, 9) . " field '{$field->name}' deleted";
             }
         }
 
         // Uninstall module (if installed)
-        if (wire('modules')->isInstalled(self::$module_name)) {
-            if (wire('modules')->isUninstallable(self::$module_name)) {
-                wire('modules')->uninstall(self::$module_name);
+        if (self::$wire->modules->isInstalled(self::$module_name)) {
+            if (self::$wire->modules->isUninstallable(self::$module_name)) {
+                self::$wire->modules->uninstall(self::$module_name);
                 $messages[] = "Module '" . self::$module_name . "' uninstalled";
             } else {
                 $errors[] = "Module '" . self::$module_name . "' not uninstallable, please uninstall manually before any new tests";
@@ -307,12 +313,12 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         }
 
         // Make sure that LanguageSupport is installed
-        if (wire('modules')->isInstalled('LanguageSupport')) {
+        if (self::$wire->modules->isInstalled('LanguageSupport')) {
             
             // Remove dummy languages
             $language_names = array('java', 'perl');
             while ($language_name = array_shift($language_names)) {
-                $language = wire('languages')->get($language_name);
+                $language = self::$wire->languages->get($language_name);
                 if ($language->id) {
                     $language->delete();
                     $messages[] = get_class($language) . " '" . $language->name . "' deleted";
@@ -321,9 +327,9 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             
             // Uninstall LanguageSupportFields
             $module_name = "LanguageSupportFields";
-            if (wire('modules')->isInstalled($module_name)) {
-                wire('modules')->uninstall($module_name);
-                if (!wire('modules')->isInstalled($module_name)) {
+            if (self::$wire->modules->isInstalled($module_name)) {
+                self::$wire->modules->uninstall($module_name);
+                if (!self::$wire->modules->isInstalled($module_name)) {
                     $messages[] = "Module '{$module_name}' uninstalled";
                 } else {
                     $errors[] = "Unable to uninstall '{$module_name}'";
@@ -379,7 +385,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
 
         // Fetch content from version control database tables
         $sql = "SELECT " . implode(", ", $columns) . " FROM {$t1} t1 " . implode(" ", $joins) . " ORDER BY t1.id";
-        $result = wire('db')->query($sql);
+        $result = self::$wire->db->query($sql);
 
         // Compare fetched rows to temporary array containing local data rows
         $data = self::$data;
@@ -401,7 +407,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
                         return count($files) ? $files : "empty directory";
                     }
                 }
-                $message[] = "Files in " . wire('modules')->VersionControl->path . ": " . var_export(rscandir(wire('modules')->VersionControl->path), true);
+                $message[] = "Files in " . self::$wire->modules->VersionControl->path . ": " . var_export(rscandir(self::$wire->modules->VersionControl->path), true);
             }
             $this->assertEquals($data_row, $row, $message ? implode("\n", $message) . "\n" : null);
         }
@@ -420,7 +426,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         LEFT JOIN version_control__data d ON df.data_id = d.id
         LEFT JOIN version_control__files f ON df.files_id = f.id
         ";
-        $result = wire('db')->query($sql);
+        $result = self::$wire->db->query($sql);
         while ($row = $result->fetch_assoc()) {
             $row_export = var_export($row, true);
             if (is_null($row['data'])) $error .= "Extra row in files table: $row_export\n";
@@ -436,7 +442,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @return string module name
      */
     public function testModuleIsInstallable() {
-        $this->assertTrue(wire('modules')->isInstallable(self::$module_name));
+        $this->assertTrue(self::$wire->modules->isInstallable(self::$module_name));
         return self::$module_name;
     }
 
@@ -450,30 +456,30 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     public function testInstallModule($module_name) {
         
         // Install the module
-        wire('modules')->install($module_name);
-        $this->assertTrue(wire('modules')->isInstalled($module_name));
+        self::$wire->modules->install($module_name);
+        $this->assertTrue(self::$wire->modules->isInstalled($module_name));
         
         // Configure the module
         $data = array(
             'enabled_templates' => array(
                 29, // basic-page
-                wire('templates')->get('test-template')->id,
+                self::$wire->templates->get('test-template')->id,
             ),
             'enabled_fields' => array(
                 1, // title
                 76, // body
-                wire('fields')->get('page')->id,
-                wire('fields')->get('checkbox')->id,
-                wire('fields')->get('images')->id,
-                wire('fields')->get('image')->id,
-                wire('fields')->get('checkbox_java')->id,
-                wire('fields')->get('text_language')->id
+                self::$wire->fields->get('page')->id,
+                self::$wire->fields->get('checkbox')->id,
+                self::$wire->fields->get('images')->id,
+                self::$wire->fields->get('image')->id,
+                self::$wire->fields->get('checkbox_java')->id,
+                self::$wire->fields->get('text_language')->id
             ),
         );
         $defaults = VersionControl::getDefaultData();
         $data = array_merge($defaults, $data);
-        wire('modules')->saveModuleConfigData($module_name, $data);
-        wire('modules')->triggerInit();
+        self::$wire->modules->saveModuleConfigData($module_name, $data);
+        self::$wire->modules->triggerInit();
 
         return $module_name;
 
@@ -489,12 +495,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testAddPage() {
-        $page = new Page;
-        $page->parent = wire('pages')->get('/');
-        $template = wire('templates')->get('basic-page');
-        $page->template = wire('templates')->get('basic-page');
-        $page->title = "a test page";
-        $page->save();
+        $page = self::$wire->pages->add('basic-page', '/', 'a test page');
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page");
         return $page;
     }
@@ -509,14 +510,14 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditPage(Page $page) {
+    public function testEditPage($page) {
         $page->title = "a test page 2";
         $page->body = "body text";
         $page->checkbox = 1;
         $page->save();
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 2");
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "body text");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox')->id, "40", "guest", "data", "1");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('checkbox')->id, "40", "guest", "data", "1");
         return $page;
     }
 
@@ -527,10 +528,10 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditField(Page $page) {
+    public function testEditField($page) {
         $page->checkbox = 0;
         $page->save('checkbox');
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox')->id, "40", "guest", "data", "0");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('checkbox')->id, "40", "guest", "data", "0");
         return $page; 
     }
 
@@ -541,22 +542,20 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * both of which were created during setup. This should add two rows to
      * version control database tables.
      *
-     * @todo module should be updated to avoid always storing empty value for
-     *       default language. This feature depends on ProcessWire issue #373.
      * @depends testEditField
      * @param Page $page
      * @return Page
      */
-    public function testEditMultiLanguageFields(Page $page) {
-        $java = wire('languages')->get('java');
-        $perl = wire('languages')->get('perl');
+    public function testEditMultiLanguageFields($page) {
+        $java = self::$wire->languages->get('java');
+        $perl = self::$wire->languages->get('perl');
         $page->text_language->setLanguageValue($java, 'since 1995');
         $page->text_language->setLanguageValue($perl, 'since 1987');
         $page->checkbox_java = 1;
         $page->save();
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data" . $java, "since 1995");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data" . $perl, "since 1987");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox_java')->id, "40", "guest", "data", "1");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, "40", "guest", "data" . $java, "since 1995");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, "40", "guest", "data" . $perl, "since 1987");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('checkbox_java')->id, "40", "guest", "data", "1");
         return $page;
     }
 
@@ -570,8 +569,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testUnpublishPage(Page $page) {
-        $page->addStatus(Page::statusUnpublished);
+    public function testUnpublishPage($page) {
+        $page->addStatus(2048); // Page::statusUnpublished
         $page->save();
         return $page;
     }
@@ -586,8 +585,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testPublishPage(Page $page) {
-        $page->removeStatus(Page::statusUnpublished);
+    public function testPublishPage($page) {
+        $page->removeStatus(2048); // Page::statusUnpublished
         $page->save();
         return $page;
     }
@@ -602,8 +601,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditAndUnpublishPage(Page $page) {
-        $page->addStatus(Page::statusUnpublished);
+    public function testEditAndUnpublishPage($page) {
+        $page->addStatus(2048); // Page::statusUnpublished
         $page->sidebar = "sidebar test";
         $page->save();
         return $page;
@@ -619,8 +618,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testMovePage(Page $page) {
-        $page->parent = wire('pages')->get("/")->child();
+    public function testMovePage($page) {
+        $page->parent = self::$wire->pages->get("/")->child();
         $page->save();
         return $page;
     }
@@ -635,7 +634,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testTrashPage(Page $page) {
+    public function testTrashPage($page) {
         $page->trash();
         return $page;
     }
@@ -650,8 +649,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testRestorePage(Page $page) {
-        $page->parent = wire('pages')->get("/");
+    public function testRestorePage($page) {
+        $page->parent = self::$wire->pages->get("/");
         $page->save();
         return $page;
     }
@@ -667,7 +666,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditRepeaterField(Page $page) {
+    public function testEditRepeaterField($page) {
         $item = $page->repeater->getNew();
         $item->title = "repeater title";
         $page->save('repeater');
@@ -688,7 +687,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditFieldtypeImageMulti(Page $page) {
+    public function testEditFieldtypeImageMulti($page) {
         $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
         $page->_filedata_timestamp = time();
@@ -700,11 +699,11 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         ));
         $page->images = $file;
         $page->images = $file;
-        $page->page = wire('pages')->get('/search/');
+        $page->page = self::$wire->pages->get('/search/');
         $page->save();
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", $filedata, $filename, "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('page')->id, "40", "guest", "data", "1000");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, "40", "guest", "0.data", $filedata, $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, "40", "guest", "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('page')->id, "40", "guest", "data", "1000");
         return $page;
     }
 
@@ -719,13 +718,13 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testSnapshot(Page $page) {
+    public function testSnapshot($page) {
 
-        $java = wire('languages')->get('java');
-        $default = wire('languages')->get('default');
+        $java = self::$wire->languages->get('java');
+        $default = self::$wire->languages->get('default');
         $page->text_language = 'placeholder';
         $page->save();
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "placeholder");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, "40", "guest", "data{$default}", "placeholder");
 
         // Snapshots are based on time and API operations happen very fast, so
         // we'll generate small gap here by making PHP sleep for a few seconds
@@ -756,11 +755,11 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         self::$data[] = array((string) $page->repeater->first()->id, "1", "40", "guest", "data", "new repeater title");
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 3");
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "new body text");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", str_replace($filedata_timestamp, $page->_filedata_timestamp, $filedata), $filename, "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace(array('.png', $filedata_timestamp), array('-1.png', $page->_filedata_timestamp), $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "2.data", str_replace('.png', '-2.png', $filedata), str_replace('.png', '-2.png', $filename), "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "default language value");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$java}", "since forever");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, "40", "guest", "0.data", str_replace($filedata_timestamp, $page->_filedata_timestamp, $filedata), $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, "40", "guest", "1.data", str_replace(array('.png', $filedata_timestamp), array('-1.png', $page->_filedata_timestamp), $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, "40", "guest", "2.data", str_replace('.png', '-2.png', $filedata), str_replace('.png', '-2.png', $filename), "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, "40", "guest", "data{$default}", "default language value");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, "40", "guest", "data{$java}", "since forever");
 
         $page->snapshot('-2 seconds');
         $this->assertEquals($starting_revision, $page->versionControlRevision);
@@ -804,8 +803,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
 
         // Reset page (but store filedata timestamp for later use)
         $filedata_timestamp = $page->_filedata_timestamp; 
-        wire('pages')->uncache($page);
-        $page = wire('pages')->get($page->id);
+        self::$wire->pages->uncache($page);
+        $page = self::$wire->pages->get($page->id);
         $page->_filedata_timestamp = $filedata_timestamp;
         $this->assertEquals($starting_revision+2, $page->versionControlRevision);
 
@@ -820,7 +819,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testRevertPage(Page $page) {
+    public function testRevertPage($page) {
         $page->snapshot('-2 seconds');
         $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
@@ -836,12 +835,12 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), (string) $page->images);
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 2");
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "body text");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "0.data", $filedata, $filename, "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('images')->id, "40", "guest", "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
-        $java = wire('languages')->get('java');
-        $default = wire('languages')->get('default');
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$default}", "placeholder");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data{$java}", "since 1995");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, "40", "guest", "0.data", $filedata, $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, "40", "guest", "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        $java = self::$wire->languages->get('java');
+        $default = self::$wire->languages->get('default');
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, "40", "guest", "data{$default}", "placeholder");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, "40", "guest", "data{$java}", "since 1995");
         $page->save();
         return $page;
     }
@@ -855,10 +854,10 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditFieldtypePage(Page $page) {
-        $page->page = wire('pages')->get('/about/');
+    public function testEditFieldtypePage($page) {
+        $page->page = self::$wire->pages->get('/about/');
         $page->save();
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('page')->id, "40", "guest", "data", "1000|1001");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('page')->id, "40", "guest", "data", "1000|1001");
         return $page;
     }
 
@@ -871,11 +870,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @returns Page
      */
     public function testAddImageTestPage() {
-        $page = new Page;
-        $page->parent = wire('pages')->get('/');
-        $page->template = wire('templates')->get('basic-page');
-        $page->title = "a test page 6";
-        $page->save();
+        $page = self::$wire->pages->add('basic-page', '/', 'a test page 6');
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 6");
         return $page;
     }
@@ -890,7 +885,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditFieldtypeImage(Page $page) {
+    public function testEditFieldtypeImage($page) {
         $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
         $filedata = array(
@@ -901,7 +896,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         );
         $page->image = $file;
         $page->save();
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('image')->id, "40", "guest", "0.data", json_encode($filedata), $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('image')->id, "40", "guest", "0.data", json_encode($filedata), $filename, "image/png", "91081");
         return $page;
     }
 
@@ -914,7 +909,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @depends testEditFieldtypeImage
      * @param Page $page
      */
-    public function testDeleteImageTestPage(Page $page) {
+    public function testDeleteImageTestPage($page) {
         $page->delete();
         array_pop(self::$data);
         array_pop(self::$data);
@@ -928,9 +923,9 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @depends testEditFieldtypePage
      * @param Page $page
      */
-    public function testRemoveFieldgroupField(Page $page) {
-        $field = wire('fields')->get('checkbox');
-        $f = wire('fields')->get('checkbox_java');
+    public function testRemoveFieldgroupField($page) {
+        $field = self::$wire->fields->get('checkbox');
+        $f = self::$wire->fields->get('checkbox_java');
         $page->template->fieldgroup->remove($field);
         $page->template->fieldgroup->save();
         $count = 0;
@@ -960,17 +955,17 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @depends testRemoveFieldgroupField
      * @param Page $page
      */
-    public function testRemoveFieldgroupFieldWithCleanupDisabled(Page $page) {
-        $data = wire('modules')->getModuleConfigData(self::$module_name);
+    public function testRemoveFieldgroupFieldWithCleanupDisabled($page) {
+        $data = self::$wire->modules->getModuleConfigData(self::$module_name);
         $data['cleanup_methods'] = array(
             'deleted_pages',
             'deleted_fields',
             'changed_template',
         );
-        wire('modules')->saveModuleConfigData(self::$module_name, $data);
-        $module = wire('modules')->get(self::$module_name);
+        self::$wire->modules->saveModuleConfigData(self::$module_name, $data);
+        $module = self::$wire->modules->get(self::$module_name);
         $module->cleanup_methods = $data['cleanup_methods'];
-        $field = wire('fields')->get('checkbox_java');
+        $field = self::$wire->fields->get('checkbox_java');
         $page->template->fieldgroup->remove($field);
         $page->template->fieldgroup->save();
         return $page;
@@ -985,14 +980,14 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @depends testRemoveFieldgroupFieldWithCleanupDisabled
      * @param Page $page
      */
-    public function testDeleteField(Page $page) {
-        $field = wire('fields')->get('checkbox_java');
+    public function testDeleteField($page) {
+        $field = self::$wire->fields->get('checkbox_java');
         foreach (self::$data as $key => $row) {
             if ($row[1] == $field->id) {
                 unset(self::$data[$key]);
             }
         }
-        wire('fields')->delete($field);
+        self::$wire->fields->delete($field);
         return $page;
     }
 
@@ -1005,10 +1000,10 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @depends testDeleteField
      * @param Page $page
      */
-    public function testChangeTemplate(Page $page) {
-        $page->template = wire('templates')->get('test-template');
+    public function testChangeTemplate($page) {
+        $page->template = self::$wire->templates->get('test-template');
         $page->save();
-        $field = wire('fields')->get('text_language');
+        $field = self::$wire->fields->get('text_language');
         $count = 0;
         foreach (self::$data as $key => $row) {
             if ($row[1] == $field->id) {
@@ -1020,7 +1015,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
                 }
             }
         }
-        $page->template = wire('templates')->get('basic-page');
+        $page->template = self::$wire->templates->get('basic-page');
         $page->save();
         return $page;
     }
@@ -1036,7 +1031,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @depends testChangeTemplate
      * @param Page $page
      */
-    public function testDeletePage(Page $page) {
+    public function testDeletePage($page) {
         $page->delete();
         self::$data = array();
     }
@@ -1051,11 +1046,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testAddNonVersionedPage() {
-        $page = new Page;
-        $page->parent = wire('pages')->get('/');
-        $page->template = wire('templates')->get('sitemap');
-        $page->title = "a test page 5";
-        $page->save();
+        $page = self::$wire->pages->add('sitemap', '/', 'a test page 5');
         return $page;
     }
 
@@ -1069,7 +1060,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditNonVersionedPage(Page $page) {
+    public function testEditNonVersionedPage($page) {
         $page->title = "a test page 6";
         $page->summary = "summary text";
         $page->save();
@@ -1086,7 +1077,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testSnapshotOnNonVersionedPage(Page $page) {
+    public function testSnapshotOnNonVersionedPage($page) {
 
         // Snapshots are based on time and API operations happen very fast, so
         // we'll generate small gap here by making PHP sleep for a few seconds
@@ -1123,7 +1114,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @depends testSnapshotOnNonVersionedPage
      * @param Page $page
      */
-    public function testDeleteNonVersionedPage(Page $page) {
+    public function testDeleteNonVersionedPage($page) {
         $page->delete();
     }
 
@@ -1135,7 +1126,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @return string module name
      */
     public function testModuleIsUninstallable($module_name) {
-        $this->assertTrue(wire('modules')->isUninstallable($module_name), "This isn't necessarily a sign of real error, as support for installing and uninstalling modules during one request is a PW 2.4+ feature");
+        $this->assertTrue(self::$wire->modules->isUninstallable($module_name), "This isn't necessarily a sign of real error, as support for installing and uninstalling modules during one request is a PW 2.4+ feature");
         return $module_name;
     }
 
@@ -1146,8 +1137,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @param string $module_name
      */
     public function testUninstallModule($module_name) {
-        wire('modules')->uninstall($module_name);
-        $this->assertFalse(wire('modules')->isInstalled($module_name));
+        self::$wire->modules->uninstall($module_name);
+        $this->assertFalse(self::$wire->modules->isInstalled($module_name));
     }
 
 }
