@@ -13,7 +13,7 @@
  * @backupGlobals disabled
  * @backupStaticAttributes disabled
  * @copyright 2014-2017 Teppo Koivula
- * @version 1.0.0
+ * @version 1.0.1
  * @license GNU/GPL v2, see LICENSE
  */
 class VersionControlTest extends PHPUnit_Framework_TestCase {
@@ -688,7 +688,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testEditFieldtypeImageMulti($page) {
-        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
+        $file = __DIR__ . "/../assets/SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
         $page->_filedata_timestamp = time();
         $filedata = json_encode(array(
@@ -738,7 +738,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $page->body = "new body text";
         $item = $page->repeater->first();
         $item->title = "new repeater title";
-        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
+        $file = __DIR__ . "/../assets/SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
         $filedata_timestamp = time();
         $filedata = json_encode(array(
@@ -821,7 +821,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      */
     public function testRevertPage($page) {
         $page->snapshot('-2 seconds');
-        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
+        $file = __DIR__ . "/../assets/SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
         $filedata = json_encode(array(
             'filename' => $filename,
@@ -886,7 +886,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testEditFieldtypeImage($page) {
-        $file = __DIR__ . "/../SIPI_Jelly_Beans.png";
+        $file = __DIR__ . "/../assets/SIPI_Jelly_Beans.png";
         $filename = hash_file('sha1', $file) . "." . strtolower(basename($file));
         $filedata = array(
             'filename' => $filename,
