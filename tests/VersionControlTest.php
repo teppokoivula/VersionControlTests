@@ -13,7 +13,7 @@
  * @backupGlobals disabled
  * @backupStaticAttributes disabled
  * @copyright 2014-2017 Teppo Koivula
- * @version 1.0.2
+ * @version 1.0.3
  * @license GNU/GPL v2, see LICENSE
  */
 class VersionControlTest extends PHPUnit_Framework_TestCase {
@@ -510,7 +510,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      */
     public function testAddPage() {
         $page = self::$wire->pages->add('basic-page', '/', 'a test page');
-        self::$data[] = array((string) $page->id, "1", self::$wire->user->id, self::$wire->user->name, "data", "a test page");
+        self::$data[] = array((string) $page->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "a test page");
         return $page;
     }
 
@@ -529,9 +529,9 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $page->body = "body text";
         $page->checkbox = 1;
         $page->save();
-        self::$data[] = array((string) $page->id, "1", self::$wire->user->id, self::$wire->user->name, "data", "a test page 2");
-        self::$data[] = array((string) $page->id, "76", self::$wire->user->id, self::$wire->user->name, "data", "body text");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('checkbox')->id, self::$wire->user->id, self::$wire->user->name, "data", "1");
+        self::$data[] = array((string) $page->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "a test page 2");
+        self::$data[] = array((string) $page->id, "76", (string) self::$wire->user->id, self::$wire->user->name, "data", "body text");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('checkbox')->id, (string) self::$wire->user->id, self::$wire->user->name, "data", "1");
         return $page;
     }
 
@@ -545,7 +545,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     public function testEditField($page) {
         $page->checkbox = 0;
         $page->save('checkbox');
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('checkbox')->id, self::$wire->user->id, self::$wire->user->name, "data", "0");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('checkbox')->id, (string) self::$wire->user->id, self::$wire->user->name, "data", "0");
         return $page; 
     }
 
@@ -567,9 +567,9 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $page->text_language->setLanguageValue($perl, 'since 1987');
         $page->checkbox_java = 1;
         $page->save();
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, self::$wire->user->id, self::$wire->user->name, "data" . $java, "since 1995");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, self::$wire->user->id, self::$wire->user->name, "data" . $perl, "since 1987");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('checkbox_java')->id, self::$wire->user->id, self::$wire->user->name, "data", "1");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data" . $java, "since 1995");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data" . $perl, "since 1987");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('checkbox_java')->id, (string) self::$wire->user->id, self::$wire->user->name, "data", "1");
         return $page;
     }
 
@@ -684,7 +684,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $item = $page->repeater->getNew();
         $item->title = "repeater title";
         $page->save('repeater');
-        self::$data[] = array((string) $item->id, "1", self::$wire->user->id, self::$wire->user->name, "data", "repeater title");
+        self::$data[] = array((string) $item->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "repeater title");
         return $page;
     }
 
@@ -715,9 +715,9 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $page->images = $file;
         $page->page = self::$wire->pages->get('/search/');
         $page->save();
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, self::$wire->user->id, self::$wire->user->name, "0.data", $filedata, $filename, "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, self::$wire->user->id, self::$wire->user->name, "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('page')->id, self::$wire->user->id, self::$wire->user->name, "data", "1000");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "0.data", $filedata, $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('page')->id, (string) self::$wire->user->id, self::$wire->user->name, "data", "1000");
         return $page;
     }
 
@@ -738,7 +738,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $default = self::$wire->languages->get('default');
         $page->text_language = 'placeholder';
         $page->save();
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, self::$wire->user->id, self::$wire->user->name, "data{$default}", "placeholder");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data{$default}", "placeholder");
 
         // Snapshots are based on time and API operations happen very fast, so
         // we'll generate small gap here by making PHP sleep for a few seconds
@@ -766,14 +766,14 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $page->text_language->setLanguageValue($java, 'since forever');
         $page->save();
         $this->assertEquals($starting_revision+2, $page->versionControlRevision);
-        self::$data[] = array((string) $page->repeater->first()->id, "1", self::$wire->user->id, self::$wire->user->name, "data", "new repeater title");
-        self::$data[] = array((string) $page->id, "1", self::$wire->user->id, self::$wire->user->name, "data", "a test page 3");
-        self::$data[] = array((string) $page->id, "76", self::$wire->user->id, self::$wire->user->name, "data", "new body text");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, self::$wire->user->id, self::$wire->user->name, "0.data", str_replace($filedata_timestamp, $page->_filedata_timestamp, $filedata), $filename, "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, self::$wire->user->id, self::$wire->user->name, "1.data", str_replace(array('.png', $filedata_timestamp), array('-1.png', $page->_filedata_timestamp), $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, self::$wire->user->id, self::$wire->user->name, "2.data", str_replace('.png', '-2.png', $filedata), str_replace('.png', '-2.png', $filename), "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, self::$wire->user->id, self::$wire->user->name, "data{$default}", "default language value");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, self::$wire->user->id, self::$wire->user->name, "data{$java}", "since forever");
+        self::$data[] = array((string) $page->repeater->first()->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "new repeater title");
+        self::$data[] = array((string) $page->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "a test page 3");
+        self::$data[] = array((string) $page->id, "76", (string) self::$wire->user->id, self::$wire->user->name, "data", "new body text");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "0.data", str_replace($filedata_timestamp, $page->_filedata_timestamp, $filedata), $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "1.data", str_replace(array('.png', $filedata_timestamp), array('-1.png', $page->_filedata_timestamp), $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "2.data", str_replace('.png', '-2.png', $filedata), str_replace('.png', '-2.png', $filename), "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data{$default}", "default language value");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data{$java}", "since forever");
 
         $page->snapshot('-2 seconds');
         $this->assertEquals($starting_revision, $page->versionControlRevision);
@@ -847,14 +847,14 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('body text', $page->body);
         $this->assertEquals('repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename), (string) $page->images);
-        self::$data[] = array((string) $page->id, "1", self::$wire->user->id, self::$wire->user->name, "data", "a test page 2");
-        self::$data[] = array((string) $page->id, "76", self::$wire->user->id, self::$wire->user->name, "data", "body text");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, self::$wire->user->id, self::$wire->user->name, "0.data", $filedata, $filename, "image/png", "91081");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, self::$wire->user->id, self::$wire->user->name, "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
+        self::$data[] = array((string) $page->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "a test page 2");
+        self::$data[] = array((string) $page->id, "76", (string) self::$wire->user->id, self::$wire->user->name, "data", "body text");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "0.data", $filedata, $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
         $java = self::$wire->languages->get('java');
         $default = self::$wire->languages->get('default');
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, self::$wire->user->id, self::$wire->user->name, "data{$default}", "placeholder");
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, self::$wire->user->id, self::$wire->user->name, "data{$java}", "since 1995");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data{$default}", "placeholder");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data{$java}", "since 1995");
         $page->save();
         return $page;
     }
@@ -871,7 +871,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
     public function testEditFieldtypePage($page) {
         $page->page = self::$wire->pages->get('/about/');
         $page->save();
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('page')->id, self::$wire->user->id, self::$wire->user->name, "data", "1000|1001");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('page')->id, (string) self::$wire->user->id, self::$wire->user->name, "data", "1000|1001");
         return $page;
     }
 
@@ -885,7 +885,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      */
     public function testAddImageTestPage() {
         $page = self::$wire->pages->add('basic-page', '/', 'a test page 6');
-        self::$data[] = array((string) $page->id, "1", self::$wire->user->id, self::$wire->user->name, "data", "a test page 6");
+        self::$data[] = array((string) $page->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "a test page 6");
         return $page;
     }
 
@@ -910,7 +910,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         );
         $page->image = $file;
         $page->save();
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('image')->id, self::$wire->user->id, self::$wire->user->name, "0.data", json_encode($filedata), $filename, "image/png", "91081");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('image')->id, (string) self::$wire->user->id, self::$wire->user->name, "0.data", json_encode($filedata), $filename, "image/png", "91081");
         return $page;
     }
 
@@ -951,7 +951,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
                     // revision; since this particular removal would cause
                     // a gap in our data (revision has no other changes),
                     // insert a new placeholder row
-                    self::$data[$key] = array((string) $page->id, null, self::$wire->user->id, self::$wire->user->name, null, null);
+                    self::$data[$key] = array((string) $page->id, null, (string) self::$wire->user->id, self::$wire->user->name, null, null);
                 } else {
                     unset(self::$data[$key]);
                 }
@@ -1023,7 +1023,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
             if ($row[1] == $field->id) {
                 ++$count;
                 if ($count == 2 || $count == 3) {
-                    self::$data[$key] = array((string) $page->id, null, self::$wire->user->id, self::$wire->user->name, null, null);
+                    self::$data[$key] = array((string) $page->id, null, (string) self::$wire->user->id, self::$wire->user->name, null, null);
                 } else {
                     unset(self::$data[$key]);
                 }
