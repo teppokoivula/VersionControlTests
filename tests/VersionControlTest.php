@@ -673,8 +673,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
      * Edit repeater item
      *
      * One row should be added to both version history database tables. Note
-     * that pages_id for version_control_for_text_fields row should point to
-     * the repeater item (RepeaterPage), not to the page it's on.
+     * that pages_id for version_control row should point to the repeater item
+     * (RepeaterPage), not to the page that the repeater item belongs to.
      *
      * @depends testRestorePage
      * @param Page $page
