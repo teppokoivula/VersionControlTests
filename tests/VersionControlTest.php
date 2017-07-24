@@ -13,7 +13,7 @@
  * @backupGlobals disabled
  * @backupStaticAttributes disabled
  * @copyright 2014-2017 Teppo Koivula
- * @version 1.0.3
+ * @version 1.0.4
  * @license GNU/GPL v2, see LICENSE
  */
 class VersionControlTest extends PHPUnit_Framework_TestCase {
@@ -749,6 +749,14 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
 
         $page->title = "a test page 3";
         $page->name = $page->title;
+        // note about the extra save here: this makes sure that VersionControl
+        // issue #14, where restoring a page to a specific revision didnt work
+        // as expected for fields that had had their values changed after that
+        // specific revision, doesn't reappear
+        $page->save();
+        $this->assertEquals($starting_revision+1, $page->versionControlRevision);
+        self::$data[] = array((string) $page->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "a test page 3");
+        
         $page->body = "new body text";
         $item = $page->repeater->first();
         $item->title = "new repeater title";
@@ -765,9 +773,10 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $page->text_language = "default language value";
         $page->text_language->setLanguageValue($java, 'since forever');
         $page->save();
-        $this->assertEquals($starting_revision+2, $page->versionControlRevision);
+        // note: starting revision is incremented by two instead of just one
+        // during this particular save operation because of a repeater field
+        $this->assertEquals($starting_revision+3, $page->versionControlRevision);
         self::$data[] = array((string) $page->repeater->first()->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "new repeater title");
-        self::$data[] = array((string) $page->id, "1", (string) self::$wire->user->id, self::$wire->user->name, "data", "a test page 3");
         self::$data[] = array((string) $page->id, "76", (string) self::$wire->user->id, self::$wire->user->name, "data", "new body text");
         self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "0.data", str_replace($filedata_timestamp, $page->_filedata_timestamp, $filedata), $filename, "image/png", "91081");
         self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "1.data", str_replace(array('.png', $filedata_timestamp), array('-1.png', $page->_filedata_timestamp), $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
@@ -785,7 +794,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
 
         $page->snapshot();
-        $this->assertEquals($starting_revision+2, $page->versionControlRevision);
+        $this->assertEquals($starting_revision+3, $page->versionControlRevision);
         $this->assertEquals('a test page 3', $page->title);
         $this->assertEquals('new body text', $page->body);
         $this->assertEquals('new repeater title', $page->repeater->first()->title);
@@ -805,12 +814,11 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('placeholder', (string) $page->text_language); 
         $this->assertEquals('since 1995', $page->text_language->getLanguageValue($java));
 
-        $page->snapshot(null, $starting_revision+2);
-        $this->assertEquals($starting_revision+2, $page->versionControlRevision);
+        $page->snapshot(null, $starting_revision+3);
+        $this->assertEquals($starting_revision+3, $page->versionControlRevision);
         $this->assertEquals('a test page 3', $page->title);
         $this->assertEquals('new body text', $page->body);
-        // note: at the moment repeater is one revision behind page; is this OK?
-        $this->assertEquals('repeater title', $page->repeater->first()->title);
+        $this->assertEquals('new repeater title', $page->repeater->first()->title);
         $this->assertEquals($filename . "|" . str_replace(".png", "-1.png", $filename) . "|" . str_replace(".png", "-2.png", $filename), $page->images);
         $this->assertEquals('default language value', (string) $page->text_language); 
         $this->assertEquals('since forever', $page->text_language->getLanguageValue($java));
@@ -820,7 +828,7 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         self::$wire->pages->uncache($page);
         $page = self::$wire->pages->get($page->id);
         $page->_filedata_timestamp = $filedata_timestamp;
-        $this->assertEquals($starting_revision+2, $page->versionControlRevision);
+        $this->assertEquals($starting_revision+3, $page->versionControlRevision);
 
         return $page;
 
@@ -853,8 +861,8 @@ class VersionControlTest extends PHPUnit_Framework_TestCase {
         self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('images')->id, (string) self::$wire->user->id, self::$wire->user->name, "1.data", str_replace('.png', '-1.png', $filedata), str_replace('.png', '-1.png', $filename), "image/png", "91081");
         $java = self::$wire->languages->get('java');
         $default = self::$wire->languages->get('default');
-        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data{$default}", "placeholder");
         self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data{$java}", "since 1995");
+        self::$data[] = array((string) $page->id, (string) self::$wire->fields->get('text_language')->id, (string) self::$wire->user->id, self::$wire->user->name, "data{$default}", "placeholder");
         $page->save();
         return $page;
     }
